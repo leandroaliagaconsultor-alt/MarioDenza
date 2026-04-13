@@ -55,34 +55,41 @@ async function getLastAdjustmentInfo(contractId: string): Promise<LastAdjustment
 
 export async function calculatePendingAdjustment(
   contractId: string
-): Promise<AdjustmentCalculation> {
-  const supabase = await createClient();
+): Promise<{ data: AdjustmentCalculation | null; error: string | null }> {
+  try {
+    const supabase = await createClient();
 
-  const { data: contract } = await supabase
-    .from("contracts")
-    .select("current_rent, ipc_referencia_inicial")
-    .eq("id", contractId)
-    .single();
+    const { data: contract } = await supabase
+      .from("contracts")
+      .select("current_rent, ipc_referencia_inicial")
+      .eq("id", contractId)
+      .single();
 
-  if (!contract) throw new Error("Contrato no encontrado");
+    if (!contract) return { data: null, error: "Contrato no encontrado" };
 
-  const lastAdj = await getLastAdjustmentInfo(contractId);
-  const ipcRef = contract.ipc_referencia_inicial as IpcReference | null;
+    const lastAdj = await getLastAdjustmentInfo(contractId);
+    const ipcRef = contract.ipc_referencia_inicial as IpcReference | null;
 
-  return calculateIpcAdjustment(
-    contract.current_rent,
-    lastAdj,
-    ipcRef,
-    new Date(),
-    getIpcValueWithCache
-  );
+    const result = await calculateIpcAdjustment(
+      contract.current_rent,
+      lastAdj,
+      ipcRef,
+      new Date(),
+      getIpcValueWithCache
+    );
+
+    return { data: result, error: null };
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? err.message : "Error al calcular el aumento" };
+  }
 }
 
 export async function applyAdjustment(
   contractId: string,
   calculation: AdjustmentCalculation,
   override?: { finalRent: number; reason: string }
-) {
+): Promise<{ error: string | null }> {
+  try {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -140,4 +147,8 @@ export async function applyAdjustment(
   revalidatePath(`/contratos/${contractId}`);
   revalidatePath("/contratos");
   revalidatePath("/dashboard");
+  return { error: null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Error al aplicar el aumento" };
+  }
 }

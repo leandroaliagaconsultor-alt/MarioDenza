@@ -34,8 +34,12 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
     setCalculating(true);
     setError(null);
     try {
-      const result = await calculatePendingAdjustment(contractId);
-      setCalc(result);
+      const { data, error: calcError } = await calculatePendingAdjustment(contractId);
+      if (calcError) {
+        setError(calcError);
+      } else {
+        setCalc(data);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al calcular");
     } finally {
@@ -59,14 +63,18 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
 
     setLoading(true);
     try {
-      await applyAdjustment(
+      const { error: applyError } = await applyAdjustment(
         contractId,
         calc,
         useOverride ? { finalRent: overrideRent, reason: overrideReason } : undefined
       );
-      toast.success("Aumento aplicado correctamente");
-      setCalc(null);
-      router.refresh();
+      if (applyError) {
+        toast.error(applyError);
+      } else {
+        toast.success("Aumento aplicado correctamente");
+        setCalc(null);
+        router.refresh();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al aplicar");
     } finally {
