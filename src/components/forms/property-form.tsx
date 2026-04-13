@@ -48,8 +48,12 @@ export function PropertyForm({ owners, defaultValues, onSubmit, submitLabel = "G
     }
   }
 
+  function onInvalid() {
+    toast.error("Revisa los campos obligatorios marcados en rojo");
+  }
+
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit, onInvalid)} className="space-y-6">
       <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Ubicacion</h2>
         <Separator className="my-4" />
@@ -82,7 +86,8 @@ export function PropertyForm({ owners, defaultValues, onSubmit, submitLabel = "G
             <Label htmlFor="type">Tipo</Label>
             <select
               id="type"
-              {...register("type")}
+              value={watch("type")}
+              onChange={(e) => setValue("type", e.target.value as PropertyFormValues["type"])}
               className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
             >
               {Object.entries(PROPERTY_TYPES).map(([value, label]) => (
@@ -94,7 +99,8 @@ export function PropertyForm({ owners, defaultValues, onSubmit, submitLabel = "G
             <Label htmlFor="status">Estado</Label>
             <select
               id="status"
-              {...register("status")}
+              value={watch("status")}
+              onChange={(e) => setValue("status", e.target.value as PropertyFormValues["status"])}
               className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
             >
               {Object.entries(PROPERTY_STATUSES).map(([value, label]) => (
