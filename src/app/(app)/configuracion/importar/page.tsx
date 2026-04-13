@@ -6,7 +6,7 @@ export default function ImportarPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="Importar datos"
-        description="Importa duenos, inquilinos y propiedades desde archivos CSV"
+        description="Importa dueños, inquilinos y propiedades desde archivos CSV"
         backHref="/configuracion"
       />
       <CsvImporter />

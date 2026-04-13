@@ -22,7 +22,7 @@ export default async function ContratosPage({ searchParams }: Props) {
     <div className="space-y-6">
       <PageHeader
         title="Contratos"
-        description="Gestion de contratos de alquiler"
+        description="Gestión de contratos de alquiler"
         action={
           <Link href="/contratos/nuevo">
             <Button className="bg-teal-600 hover:bg-teal-700">

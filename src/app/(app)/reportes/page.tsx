@@ -3,7 +3,7 @@ import { BarChart3, DollarSign, Users, AlertTriangle, Building2, TrendingUp } fr
 
 const reports = [
   { title: "Comisiones", description: "Ingresos por comisiones por periodo", href: "/reportes/comisiones", icon: DollarSign },
-  { title: "Resumen por dueno", description: "Resumen anual de pagos por propietario", href: "/reportes/resumen-dueno", icon: Users },
+  { title: "Resumen por dueño", description: "Resumen anual de pagos por propietario", href: "/reportes/resumen-dueno", icon: Users },
   { title: "Morosidad", description: "Pagos vencidos y parciales", href: "/reportes/morosidad", icon: AlertTriangle },
   { title: "Ocupacion", description: "Estado de propiedades", href: "/reportes/ocupacion", icon: Building2 },
 ];

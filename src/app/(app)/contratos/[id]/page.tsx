@@ -34,7 +34,9 @@ export default async function ContratoDetailPage({ params }: Props) {
   ]);
 
   const propertyRaw = contract.property;
-  const property = (Array.isArray(propertyRaw) ? propertyRaw[0] : propertyRaw) as { id: string; address: string; unit?: string; owner: { full_name: string } | { full_name: string }[] } | null;
+  const property = (Array.isArray(propertyRaw) ? propertyRaw[0] : propertyRaw) as { id: string; address: string; unit?: string; owner: { full_name: string; phone?: string } | { full_name: string; phone?: string }[] } | null;
+  const ownerData = property?.owner;
+  const owner = Array.isArray(ownerData) ? ownerData[0] : ownerData;
   const tenantRaw = contract.tenant;
   const tenant = (Array.isArray(tenantRaw) ? tenantRaw[0] : tenantRaw) as { id: string; full_name: string; phone?: string; email?: string } | null;
   const adjConfig = (contract.contract_adjustments as { index_type: string; frequency_months: number; next_adjustment_date: string; fixed_percentage?: number }[])?.[0];
@@ -113,7 +115,7 @@ export default async function ContratoDetailPage({ params }: Props) {
               <Link href={`/propiedades/${property.id}`} className="font-medium text-gray-900 hover:text-teal-600">
                 {property.address}{property.unit ? ` - ${property.unit}` : ""}
               </Link>
-              <p className="mt-1 text-sm text-gray-500">Dueno: {(Array.isArray(property.owner) ? property.owner[0] : property.owner)?.full_name}</p>
+              <p className="mt-1 text-sm text-gray-500">Dueño: {(Array.isArray(property.owner) ? property.owner[0] : property.owner)?.full_name}</p>
             </div>
           )}
         </div>
@@ -206,12 +208,15 @@ export default async function ContratoDetailPage({ params }: Props) {
       {/* WhatsApp */}
       {tenant?.phone && contract.status === "activo" && (
         <WhatsAppButton
-          phone={tenant.phone}
+          tenantPhone={tenant.phone}
           tenantName={tenant.full_name}
+          ownerPhone={owner?.phone}
+          ownerName={owner?.full_name}
           propertyAddress={`${property?.address ?? ""}${property?.unit ? ` - ${property.unit}` : ""}`}
           currentRent={contract.current_rent}
           currency={currency}
           endDate={contract.end_date}
+          contractStatus={contract.status}
         />
       )}
 

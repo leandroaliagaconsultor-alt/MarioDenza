@@ -22,7 +22,7 @@ export default async function PropiedadesPage({ searchParams }: Props) {
     <div className="space-y-6">
       <PageHeader
         title="Propiedades"
-        description="Gestion de propiedades de la inmobiliaria"
+        description="Gestión de propiedades de la inmobiliaria"
         action={
           <Link href="/propiedades/nuevo">
             <Button className="bg-teal-600 hover:bg-teal-700">
@@ -33,7 +33,7 @@ export default async function PropiedadesPage({ searchParams }: Props) {
       />
 
       <div className="flex flex-wrap items-center gap-4">
-        <SearchInput placeholder="Buscar por direccion, ciudad o dueno..." />
+        <SearchInput placeholder="Buscar por dirección, ciudad o dueño..." />
         <div className="flex gap-2">
           <Link href="/propiedades">
             <Button variant={!status ? "default" : "outline"} size="sm" className={!status ? "bg-teal-600" : ""}>Todas</Button>

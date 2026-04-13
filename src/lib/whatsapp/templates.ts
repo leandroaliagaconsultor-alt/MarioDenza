@@ -27,3 +27,12 @@ export function contractExpirationMessage(params: {
 }): string {
   return `Hola ${params.tenantName}, te recordamos que el contrato de alquiler de ${params.propertyAddress} vence el ${params.endDate}. Nos gustaria coordinar la renovacion o la entrega del inmueble. Saludos.`;
 }
+
+export function ownerExpirationMessage(params: {
+  ownerName: string;
+  tenantName: string;
+  propertyAddress: string;
+  endDate: string;
+}): string {
+  return `Hola ${params.ownerName}, le informamos que el contrato de alquiler de su propiedad en ${params.propertyAddress} (inquilino: ${params.tenantName}) vence el ${params.endDate}. Quedamos a disposicion para coordinar la renovacion o los pasos a seguir. Saludos.`;
+}

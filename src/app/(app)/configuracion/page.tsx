@@ -16,7 +16,7 @@ const sections = [
   },
   {
     title: "Importar datos",
-    description: "Importa duenos, inquilinos, propiedades y contratos desde CSV",
+    description: "Importa dueños, inquilinos, propiedades y contratos desde CSV",
     href: "/configuracion/importar",
     icon: Upload,
   },

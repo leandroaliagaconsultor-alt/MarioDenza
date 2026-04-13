@@ -93,7 +93,7 @@ export default async function PaymentDetailPage({ params }: Props) {
           <p className="mt-1 text-lg font-bold text-gray-900">{formatCurrency(payment.commission_amount, currency)}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white/80 p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">Pago al dueno</p>
+          <p className="text-xs font-medium text-gray-500">Pago al dueño</p>
           <p className="mt-1 text-lg font-bold text-gray-900">{formatCurrency(payment.owner_payout, currency)}</p>
         </div>
       </div>

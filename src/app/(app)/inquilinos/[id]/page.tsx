@@ -91,7 +91,7 @@ export default async function InquilinoDetailPage({ params }: Props) {
                       </p>
                       <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
                         <span>{formatDate(c.start_date)} — {formatDate(c.end_date)}</span>
-                        {owner && <span>Dueno: {owner.full_name}</span>}
+                        {owner && <span>Dueño: {owner.full_name}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

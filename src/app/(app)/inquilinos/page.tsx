@@ -19,7 +19,7 @@ export default async function InquilinosPage({ searchParams }: Props) {
     <div className="space-y-6">
       <PageHeader
         title="Inquilinos"
-        description="Gestion de inquilinos"
+        description="Gestión de inquilinos"
         action={
           <Link href="/inquilinos/nuevo">
             <Button className="bg-teal-600 hover:bg-teal-700">

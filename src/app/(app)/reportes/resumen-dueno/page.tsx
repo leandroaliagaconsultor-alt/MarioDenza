@@ -33,7 +33,7 @@ export default async function ResumenDuenoPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Resumen por dueno" description={`Ano ${year}`} backHref="/reportes"
+      <PageHeader title="Resumen por dueño" description={`Ano ${year}`} backHref="/reportes"
         action={<ExportButton headers={csvHeaders} rows={csvRows} filename={`resumen-duenos-${year}.csv`} />} />
 
       <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm">
@@ -45,7 +45,7 @@ export default async function ResumenDuenoPage({ searchParams }: Props) {
                 <th className="px-6 py-3 text-right">Pagos</th>
                 <th className="px-6 py-3 text-right">Total cobrado</th>
                 <th className="px-6 py-3 text-right">Comision</th>
-                <th className="px-6 py-3 text-right">Liquidado al dueno</th>
+                <th className="px-6 py-3 text-right">Liquidado al dueño</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">

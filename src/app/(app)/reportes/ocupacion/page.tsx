@@ -11,7 +11,7 @@ export default async function OcupacionPage() {
   const available = data.filter((p) => p.status === "disponible").length;
   const rate = data.length > 0 ? Math.round((occupied / data.length) * 100) : 0;
 
-  const csvHeaders = ["Direccion", "Unidad", "Ciudad", "Tipo", "Estado", "Propietario"];
+  const csvHeaders = ["Dirección", "Unidad", "Ciudad", "Tipo", "Estado", "Propietario"];
   const csvRows = data.map((p: any) => {
     const own = Array.isArray(p.owner) ? p.owner[0] : p.owner;
     return [p.address, p.unit || "", p.city || "", p.type, p.status, own?.full_name || ""];

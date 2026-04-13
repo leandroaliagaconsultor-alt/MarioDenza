@@ -17,7 +17,7 @@ export default async function ComisionesPage({ searchParams }: Props) {
   const totalPaid = data.reduce((s, p) => s + (p.amount_paid || 0), 0);
   const totalPayout = data.reduce((s, p) => s + (p.owner_payout || 0), 0);
 
-  const csvHeaders = ["Periodo", "Propiedad", "Inquilino", "Cobrado", "Comision", "Pago dueno"];
+  const csvHeaders = ["Periodo", "Propiedad", "Inquilino", "Cobrado", "Comision", "Pago dueño"];
   const csvRows = data.map((p: any) => {
     const c = Array.isArray(p.contract) ? p.contract[0] : p.contract;
     const prop = Array.isArray(c?.property) ? c.property[0] : c?.property;
@@ -40,7 +40,7 @@ export default async function ComisionesPage({ searchParams }: Props) {
           <p className="mt-1 text-xl font-bold text-teal-600">{formatCurrency(totalCommissions)}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white/80 p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">Pago a duenos</p>
+          <p className="text-xs font-medium text-gray-500">Pago a dueños</p>
           <p className="mt-1 text-xl font-bold">{formatCurrency(totalPayout)}</p>
         </div>
       </div>
@@ -55,7 +55,7 @@ export default async function ComisionesPage({ searchParams }: Props) {
                 <th className="px-6 py-3">Inquilino</th>
                 <th className="px-6 py-3 text-right">Cobrado</th>
                 <th className="px-6 py-3 text-right">Comision</th>
-                <th className="px-6 py-3 text-right">Pago dueno</th>
+                <th className="px-6 py-3 text-right">Pago dueño</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">

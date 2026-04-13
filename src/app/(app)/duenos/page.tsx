@@ -18,13 +18,13 @@ export default async function DuenosPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Duenos"
-        description="Gestion de propietarios"
+        title="Dueños"
+        description="Gestión de propietarios"
         action={
           <Link href="/duenos/nuevo">
             <Button className="bg-teal-600 hover:bg-teal-700">
               <Plus className="mr-2 h-4 w-4" />
-              Nuevo dueno
+              Nuevo dueño
             </Button>
           </Link>
         }
@@ -37,10 +37,10 @@ export default async function DuenosPage({ searchParams }: Props) {
       {owners.length === 0 ? (
         <EmptyState
           icon={Users}
-          title={q ? "Sin resultados" : "Sin duenos registrados"}
+          title={q ? "Sin resultados" : "Sin dueños registrados"}
           description={
             q
-              ? "No se encontraron duenos con esa busqueda."
+              ? "No se encontraron dueños con esa busqueda."
               : "Agrega tu primer propietario para comenzar."
           }
         />
