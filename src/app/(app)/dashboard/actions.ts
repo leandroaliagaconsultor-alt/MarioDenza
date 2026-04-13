@@ -27,7 +27,7 @@ export async function getDashboardStats() {
     supabase.from("contracts").select("*", { count: "exact", head: true }).eq("status", "activo"),
     supabase.from("contracts")
       .select("id, end_date, property:properties(address, unit), tenant:tenants(full_name)")
-      .eq("status", "activo")
+      .in("status", ["activo", "por_vencer"])
       .lte("end_date", new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
       .order("end_date"),
     supabase.from("payments")
@@ -94,7 +94,7 @@ export async function getNotifications() {
   const { count: expiringCount } = await supabase
     .from("contracts")
     .select("*", { count: "exact", head: true })
-    .eq("status", "activo")
+    .in("status", ["activo", "por_vencer"])
     .lte("end_date", new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
 
   // Pending adjustments count
