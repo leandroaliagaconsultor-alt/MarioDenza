@@ -17,7 +17,7 @@ export function SearchInput({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [value, setValue] = useState(searchParams.get(paramName) ?? "");
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   function handleChange(term: string) {
     setValue(term);
