@@ -25,7 +25,7 @@ export function PropertyForm({ owners, defaultValues, onSubmit, submitLabel = "G
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<PropertyFormValues>({
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
     defaultValues: {
       address: "", unit: "", city: "Mercedes", province: "Buenos Aires",
@@ -106,7 +106,8 @@ export function PropertyForm({ owners, defaultValues, onSubmit, submitLabel = "G
             <Label htmlFor="owner_id">Propietario *</Label>
             <select
               id="owner_id"
-              {...register("owner_id")}
+              value={watch("owner_id")}
+              onChange={(e) => setValue("owner_id", e.target.value, { shouldValidate: true })}
               className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
             >
               <option value="">Seleccionar propietario...</option>
