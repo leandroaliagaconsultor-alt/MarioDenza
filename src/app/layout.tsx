@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   description: "Sistema de gestion — Mario Denza Propiedades, Mercedes, Buenos Aires",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/logo.png",
   },
 };
 

@@ -1,7 +1,13 @@
 import Link from "next/link";
-import { Settings, TrendingUp, Upload } from "lucide-react";
+import { Settings, TrendingUp, Upload, Users } from "lucide-react";
 
 const sections = [
+  {
+    title: "Usuarios",
+    description: "Administra usuarios, cambia email y contraseña (maximo 3 usuarios)",
+    href: "/configuracion/usuarios",
+    icon: Users,
+  },
   {
     title: "Indices ICL / IPC",
     description: "Carga y consulta valores de indices para calcular aumentos de alquiler",

@@ -58,15 +58,13 @@ export function Sidebar() {
       >
         {/* Logo + close on mobile */}
         <div className="flex h-16 items-center justify-between border-b border-gray-800 px-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7ab929] text-white font-bold text-sm">
-              MD
-            </div>
-            {!collapsed && (
-              <div className="truncate">
-                <span className="text-sm font-bold text-white">Mario Denza</span>
-                <span className="block text-[10px] text-gray-400">Propiedades</span>
+          <div className="flex items-center gap-2">
+            {collapsed ? (
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7ab929] text-white font-bold text-sm">
+                MD
               </div>
+            ) : (
+              <img src="/logo.png" alt="Mario Denza Propiedades" className="h-10 brightness-0 invert" />
             )}
           </div>
           <button

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <!-- House icon -->
+  <g transform="translate(5,5)">
+    <rect x="0" y="15" width="35" height="35" rx="4" fill="#7ab929" opacity="0.9"/>
+    <path d="M5 30 L17.5 12 L30 30" fill="none" stroke="#1a2744" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="13" y="30" width="9" height="12" rx="1" fill="#1a2744"/>
+    <!-- Speech bubble tail -->
+    <path d="M28 45 L38 52 L32 45" fill="#7ab929"/>
+  </g>
+  <!-- MD text -->
+  <text x="52" y="32" font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="30" fill="#1a2744">MD</text>
+  <!-- Mario Denza -->
+  <text x="52" y="47" font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="11" fill="#1a2744">MARIO DENZA</text>
+  <!-- Propiedades -->
+  <text x="52" y="57" font-family="Arial,Helvetica,sans-serif" font-weight="600" font-size="9" letter-spacing="2" fill="#7ab929">PROPIEDADES</text>
+</svg>

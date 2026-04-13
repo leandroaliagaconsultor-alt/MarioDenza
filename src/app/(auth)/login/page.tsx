@@ -37,21 +37,9 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-sm">
       <div className="rounded-2xl border border-gray-200 bg-white/80 px-8 py-10 shadow-xl">
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#1a2744] text-white shadow-lg">
-            <span className="text-xl font-bold text-[#7ab929]">MD</span>
-          </div>
-          <div className="text-center">
-            <h1 className="text-xl font-bold text-[#1a2744]">
-              Mario Denza
-            </h1>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#7ab929]">
-              Propiedades
-            </p>
-            <p className="mt-2 text-sm text-gray-500">
-              Ingresa con tu cuenta
-            </p>
-          </div>
+        <div className="mb-8 flex flex-col items-center gap-4">
+          <img src="/logo.png" alt="Mario Denza Propiedades" className="h-16" />
+          <p className="text-sm text-gray-500">Ingresa con tu cuenta</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
