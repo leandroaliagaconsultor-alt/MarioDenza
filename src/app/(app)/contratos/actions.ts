@@ -56,7 +56,7 @@ export async function getContractById(id: string) {
   return data;
 }
 
-export async function createContract(values: ContractFormValues & { retroactive_current_rent?: number; retroactive_adjustments?: RetroactiveResult["adjustments"] }) {
+export async function createContract(values: ContractFormValues & { retroactive_current_rent?: number; retroactive_adjustments?: RetroactiveResult["adjustments"]; renew_from?: string }) {
   const parsed = contractFormSchema.parse(values);
   const supabase = await createClient();
 
@@ -106,11 +106,20 @@ export async function createContract(values: ContractFormValues & { retroactive_
       late_fee_value: parsed.late_fee_enabled ? parsed.late_fee_value : null,
       status: "activo",
       notes: parsed.notes || null,
+      previous_contract_id: values.renew_from || null,
     })
     .select("id")
     .single();
 
   if (contractError) throw contractError;
+
+  // If renewal, finalize the previous contract
+  if (values.renew_from) {
+    await supabase
+      .from("contracts")
+      .update({ status: "finalizado" })
+      .eq("id", values.renew_from);
+  }
 
   // Insert adjustment config if provided
   if (parsed.adjustment_index_type && parsed.adjustment_frequency_months && parsed.adjustment_next_date) {

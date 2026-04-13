@@ -40,6 +40,7 @@ export default async function NuevoContratoPage({ searchParams }: Props) {
         })}
         tenants={tenants}
         prefill={prefill}
+        renewFrom={params.renew_from}
       />
     </div>
   );

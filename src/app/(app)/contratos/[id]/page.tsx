@@ -71,6 +71,16 @@ export default async function ContratoDetailPage({ params }: Props) {
         }
       />
 
+      {/* Renewal link */}
+      {contract.previous_contract_id && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm">
+          <span className="text-blue-700">Renovacion de </span>
+          <Link href={`/contratos/${contract.previous_contract_id}`} className="font-medium text-blue-700 underline hover:text-blue-900">
+            contrato anterior
+          </Link>
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-gray-200 bg-white/80 p-4 shadow-sm">
