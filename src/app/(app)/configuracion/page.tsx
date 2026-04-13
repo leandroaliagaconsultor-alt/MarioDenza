@@ -29,7 +29,7 @@ export default function ConfiguracionPage() {
           <Link
             key={s.href}
             href={s.href}
-            className="group rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm transition hover:border-teal-300 hover:shadow-md"
+            className="group rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm transition hover:border-teal-300 hover:shadow-md"
           >
             <div className="flex items-start gap-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600 group-hover:bg-teal-100">

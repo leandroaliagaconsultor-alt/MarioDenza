@@ -36,7 +36,7 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-sm">
-      <div className="rounded-2xl border border-gray-200 bg-white/80 px-8 py-10 shadow-xl backdrop-blur-sm">
+      <div className="rounded-2xl border border-gray-200 bg-white/80 px-8 py-10 shadow-xl">
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#1a2744] text-white shadow-lg">
             <span className="text-xl font-bold text-[#7ab929]">MD</span>

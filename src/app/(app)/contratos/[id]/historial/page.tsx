@@ -108,7 +108,7 @@ export default async function HistorialPage({ params }: Props) {
         backHref={`/contratos/${id}`}
       />
 
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <div className="relative">
           {/* Timeline line */}
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />

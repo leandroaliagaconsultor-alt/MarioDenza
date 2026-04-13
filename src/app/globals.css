@@ -94,7 +94,6 @@
 }
 
 html {
-  scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -104,9 +103,7 @@ body {
 
 /* Glassmorphism utility */
 .glass {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 

@@ -42,7 +42,7 @@ export default async function InquilinoDetailPage({ params }: Props) {
         }
       />
 
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Datos personales</h2>
         <Separator className="my-4" />
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -66,7 +66,7 @@ export default async function InquilinoDetailPage({ params }: Props) {
       </div>
 
       {/* Contratos del inquilino */}
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
           <FileText className="h-5 w-5 text-gray-400" />
           Contratos ({contracts.length})
@@ -112,7 +112,7 @@ export default async function InquilinoDetailPage({ params }: Props) {
       </div>
 
       {guarantors.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
             <Shield className="h-5 w-5 text-gray-400" /> Garantes ({guarantors.length})
           </h2>
@@ -135,7 +135,7 @@ export default async function InquilinoDetailPage({ params }: Props) {
       <DocumentUpload entityType="tenant" entityId={id} documents={documents} />
 
       {tenant.notes && (
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">Notas</h2>
           <Separator className="my-4" />
           <p className="whitespace-pre-wrap text-sm text-gray-600">{tenant.notes}</p>

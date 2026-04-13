@@ -4,7 +4,7 @@ function Skeleton({ className }: { className?: string }) {
 
 export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm">
+    <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm">
       <div className="p-6">
         <Skeleton className="h-6 w-40" />
       </div>

@@ -15,7 +15,7 @@ function StatCard({ title, value, subtitle, icon: Icon, color }: {
   title: string; value: string; subtitle?: string; icon: React.ElementType; color: string;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm">
+    <div className="rounded-xl border border-gray-200 bg-white/80 p-5 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500">{title}</p>
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Overdue payments */}
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
             <CreditCard className="h-5 w-5 text-gray-400" /> Pagos vencidos
           </h2>
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Expiring contracts */}
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
             <Calendar className="h-5 w-5 text-gray-400" /> Contratos por vencer (90 dias)
           </h2>

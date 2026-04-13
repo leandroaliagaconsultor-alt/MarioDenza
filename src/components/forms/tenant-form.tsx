@@ -49,7 +49,7 @@ export function TenantForm({ defaultValues, onSubmit, submitLabel = "Guardar" }:
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Datos personales</h2>
         <Separator className="my-4" />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -74,7 +74,7 @@ export function TenantForm({ defaultValues, onSubmit, submitLabel = "Guardar" }:
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Garantes</h2>
           <Button
@@ -123,7 +123,7 @@ export function TenantForm({ defaultValues, onSubmit, submitLabel = "Guardar" }:
         )}
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Notas</h2>
         <Separator className="my-4" />
         <Textarea {...register("notes")} placeholder="Notas internas..." rows={3} />

@@ -71,7 +71,7 @@ export function DocumentUpload({ entityType, entityId, documents }: Props) {
   const isImage = (mime: string | null) => mime?.startsWith("image/");
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+    <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
       <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
         <FileText className="h-5 w-5 text-gray-400" /> Documentos ({documents.length})
       </h2>

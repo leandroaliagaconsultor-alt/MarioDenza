@@ -49,7 +49,7 @@ export default async function ContratosPage({ searchParams }: Props) {
       {contracts.length === 0 ? (
         <EmptyState icon={FileText} title={q || status ? "Sin resultados" : "Sin contratos"} description={q || status ? "No se encontraron contratos." : "Crea tu primer contrato."} />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>

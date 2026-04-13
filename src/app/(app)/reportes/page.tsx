@@ -17,7 +17,7 @@ export default function ReportesPage() {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {reports.map((r) => (
-          <Link key={r.href} href={r.href} className="group rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm transition hover:border-teal-300 hover:shadow-md">
+          <Link key={r.href} href={r.href} className="group rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm transition hover:border-teal-300 hover:shadow-md">
             <div className="flex items-start gap-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600 group-hover:bg-teal-100">
                 <r.icon className="h-5 w-5" />

@@ -45,7 +45,7 @@ export default async function DuenosPage({ searchParams }: Props) {
           }
         />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>

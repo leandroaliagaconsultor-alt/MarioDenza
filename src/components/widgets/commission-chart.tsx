@@ -15,7 +15,7 @@ export function CommissionChart({ data }: Props) {
   const maxAmount = Math.max(...data.map((d) => d.amount), 1);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+    <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900">Comisiones ultimos 6 meses</h2>
       <div className="mt-4 flex items-end gap-2" style={{ height: 120 }}>
         {data.map((d) => {

@@ -138,7 +138,7 @@ export function WizardShell({ properties: initialProperties, tenants: initialTen
       </div>
 
       <div>
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           {step === 0 && (
             <StepUploadPdf
               properties={properties}

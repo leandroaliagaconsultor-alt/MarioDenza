@@ -57,7 +57,7 @@ export default async function PagosPage({ searchParams }: Props) {
           description={q || status || period ? "No se encontraron pagos." : "Genera los pagos del mes con el boton de arriba."}
         />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>

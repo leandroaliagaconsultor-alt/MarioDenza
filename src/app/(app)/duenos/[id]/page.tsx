@@ -51,7 +51,7 @@ export default async function DuenoDetailPage({ params }: Props) {
         }
       />
 
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Datos personales</h2>
         <Separator className="my-4" />
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -87,7 +87,7 @@ export default async function DuenoDetailPage({ params }: Props) {
       </div>
 
       {(bankInfo.banco || bankInfo.cbu || bankInfo.alias) && (
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
             <Landmark className="h-5 w-5 text-gray-400" />
             Datos bancarios
@@ -111,7 +111,7 @@ export default async function DuenoDetailPage({ params }: Props) {
       )}
 
       {/* Propiedades del dueno */}
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
           <Building2 className="h-5 w-5 text-gray-400" />
           Propiedades ({properties.length})
@@ -188,7 +188,7 @@ export default async function DuenoDetailPage({ params }: Props) {
       <DocumentUpload entityType="owner" entityId={id} documents={documents} />
 
       {owner.notes && (
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">Notas</h2>
           <Separator className="my-4" />
           <p className="whitespace-pre-wrap text-sm text-gray-600">{owner.notes}</p>

@@ -86,7 +86,7 @@ export function CsvImporter() {
   return (
     <div className="space-y-6">
       {/* Entity selector + template download */}
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">1. Selecciona tipo y descarga plantilla</h2>
         <Separator className="my-4" />
         <div className="flex flex-wrap items-end gap-4">
@@ -109,7 +109,7 @@ export function CsvImporter() {
       </div>
 
       {/* File upload */}
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">2. Subi el archivo CSV</h2>
         <Separator className="my-4" />
         <input
@@ -135,7 +135,7 @@ export function CsvImporter() {
 
       {/* Preview */}
       {preview && preview.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">3. Preview ({preview.length} filas)</h2>
             {result === null && (

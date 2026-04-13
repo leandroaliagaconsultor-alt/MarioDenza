@@ -49,7 +49,7 @@ export default async function PropiedadesPage({ searchParams }: Props) {
       {properties.length === 0 ? (
         <EmptyState icon={Building2} title={q || status ? "Sin resultados" : "Sin propiedades"} description={q || status ? "No se encontraron propiedades." : "Agrega tu primera propiedad."} />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>

@@ -23,7 +23,7 @@ export default async function MorosidadPage() {
       <PageHeader title="Morosidad" description={`Total adeudado: ${formatCurrency(total)}`} backHref="/reportes"
         action={<ExportButton headers={csvHeaders} rows={csvRows} filename="morosidad.csv" />} />
 
-      <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>

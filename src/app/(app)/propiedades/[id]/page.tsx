@@ -38,7 +38,7 @@ export default async function PropiedadDetailPage({ params }: Props) {
         }
       />
 
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Detalles</h2>
           <StatusBadge label={PROPERTY_STATUSES[property.status as PropertyStatus]} colorClass={PROPERTY_STATUS_COLORS[property.status as PropertyStatus]} />
@@ -64,7 +64,7 @@ export default async function PropiedadDetailPage({ params }: Props) {
       </div>
 
       {owner && (
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
             <User className="h-5 w-5 text-gray-400" /> Propietario
           </h2>
@@ -85,7 +85,7 @@ export default async function PropiedadDetailPage({ params }: Props) {
       <DocumentUpload entityType="property" entityId={id} documents={documents} />
 
       {property.notes && (
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">Notas</h2>
           <Separator className="my-4" />
           <p className="whitespace-pre-wrap text-sm text-gray-600">{property.notes}</p>

@@ -13,7 +13,7 @@ export function OccupancyChart({ occupied, available, maintenance, total }: Prop
   const pctMaintenance = Math.round((maintenance / total) * 100);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+    <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900">Ocupacion</h2>
       <div className="mt-4 flex items-center gap-4">
         {/* Donut-style bar */}

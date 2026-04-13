@@ -31,7 +31,7 @@ function IndexTable({ title, entries, maxRows, onDelete }: {
   const visible = entries.slice(0, maxRows);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+    <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
       <Separator className="my-4" />
       {visible.length === 0 ? (
@@ -177,7 +177,7 @@ export function IndexManager({ entries }: Props) {
       <IndexTable title="ICL — Ultimos 12 meses" entries={iclEntries} maxRows={12} onDelete={handleDelete} />
 
       {/* Manual fallback */}
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-gray-700">Carga manual (si la sincronizacion falla)</h2>
         <Separator className="my-3" />
         <div className="flex items-end gap-3">
