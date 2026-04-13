@@ -5,6 +5,13 @@
 export function parseCsv(rawText: string): string[][] {
   // Strip BOM and normalize line endings
   const text = rawText.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  // Auto-detect separator: if first line has more ; than , use ;
+  const firstLine = text.split("\n")[0] ?? "";
+  const semicolons = (firstLine.match(/;/g) || []).length;
+  const commas = (firstLine.match(/,/g) || []).length;
+  const separator = semicolons > commas ? ";" : ",";
+
   const rows: string[][] = [];
   let current = "";
   let inQuotes = false;
@@ -26,7 +33,7 @@ export function parseCsv(rawText: string): string[][] {
     } else {
       if (char === '"') {
         inQuotes = true;
-      } else if (char === ",") {
+      } else if (char === separator) {
         row.push(current.trim());
         current = "";
       } else if (char === "\n" || (char === "\r" && next === "\n")) {
