@@ -1,10 +1,13 @@
 import {
-  Building2, FileText, TrendingUp, AlertTriangle, Calendar, CreditCard,
+  Building2, FileText, TrendingUp, AlertTriangle, Calendar, CreditCard, MessageCircle, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { getDashboardStats } from "./actions";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { INDEX_TYPES } from "@/lib/types/enums";
+import { DashboardWhatsApp } from "./dashboard-whatsapp";
 
 function StatCard({ title, value, subtitle, icon: Icon, color }: {
   title: string; value: string; subtitle?: string; icon: React.ElementType; color: string;
@@ -67,15 +70,30 @@ export default async function DashboardPage() {
                 const prop = Array.isArray(contract?.property) ? contract.property[0] : contract?.property;
                 const ten = Array.isArray(contract?.tenant) ? contract.tenant[0] : contract?.tenant;
                 return (
-                  <Link key={p.id} href={`/pagos/${p.id}`} className="flex items-center justify-between rounded-lg border border-gray-100 p-3 transition hover:bg-gray-50">
+                  <div key={p.id} className="flex items-center justify-between rounded-lg border border-red-100 bg-red-50/30 p-3">
                     <div>
                       <p className="text-sm font-medium text-gray-900">{prop?.address}{prop?.unit ? ` - ${prop.unit}` : ""}</p>
                       <p className="text-xs text-gray-500">{ten?.full_name} — Vto: {formatDate(p.due_date)}</p>
                     </div>
-                    <p className="text-sm font-bold text-red-600">{formatCurrency(p.amount_due)}</p>
-                  </Link>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-red-600">{formatCurrency(p.amount_due)}</p>
+                      {ten?.phone && (
+                        <DashboardWhatsApp type="overdue" phone={ten.phone} tenantName={ten.full_name} propertyAddress={`${prop?.address ?? ""}${prop?.unit ? ` - ${prop.unit}` : ""}`} amount={String(p.amount_due)} period={p.period?.substring(0, 7)} dueDate={p.due_date} />
+                      )}
+                      <Link href={`/pagos/${p.id}`}>
+                        <Button variant="outline" size="sm" className="h-7 px-2">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
                 );
               })}
+              {stats.overduePayments.length > 5 && (
+                <Link href="/pagos?status=vencido" className="block text-center text-xs text-teal-600 hover:underline">
+                  Ver todos ({stats.overduePayments.length})
+                </Link>
+              )}
             </div>
           )}
         </div>
@@ -108,30 +126,47 @@ export default async function DashboardPage() {
         </div>
 
         {/* Pending adjustments */}
-        {stats.pendingAdjustments.length > 0 && (
-          <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm lg:col-span-2">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-              <TrendingUp className="h-5 w-5 text-gray-400" /> Aumentos pendientes (30 dias)
-            </h2>
-            <Separator className="my-3" />
+        <div className="rounded-xl border border-teal-200 bg-teal-50/30 p-6 shadow-sm lg:col-span-2">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <TrendingUp className="h-5 w-5 text-teal-600" /> Aumentos proximos (30 dias)
+          </h2>
+          <Separator className="my-3" />
+          {stats.pendingAdjustments.length === 0 ? (
+            <p className="py-4 text-center text-sm text-gray-400">No hay aumentos programados para los proximos 30 dias</p>
+          ) : (
             <div className="space-y-3">
               {stats.pendingAdjustments.map((a: any) => {
                 const contract = Array.isArray(a.contract) ? a.contract[0] : a.contract;
                 const prop = Array.isArray(contract?.property) ? contract.property[0] : contract?.property;
                 const ten = Array.isArray(contract?.tenant) ? contract.tenant[0] : contract?.tenant;
+                const indexLabel = INDEX_TYPES[a.index_type as keyof typeof INDEX_TYPES] ?? a.index_type;
                 return (
-                  <Link key={a.id} href={`/contratos/${a.contract_id}`} className="flex items-center justify-between rounded-lg border border-gray-100 p-3 transition hover:bg-gray-50">
+                  <div key={a.id} className="flex items-center justify-between rounded-lg border border-teal-100 bg-white p-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{prop?.address}</p>
-                      <p className="text-xs text-gray-500">{ten?.full_name} — Alquiler actual: {formatCurrency(contract?.current_rent ?? 0)}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {prop?.address}{prop?.unit ? ` - ${prop.unit}` : ""}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {ten?.full_name} — {indexLabel} cada {a.frequency_months}m — Actual: {formatCurrency(contract?.current_rent ?? 0, contract?.currency ?? "ARS")}
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-teal-600">{formatDate(a.next_adjustment_date)}</p>
-                  </Link>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-teal-700">{formatDate(a.next_adjustment_date)}</p>
+                        <p className="text-xs text-teal-600">Proximo aumento</p>
+                      </div>
+                      <Link href={`/contratos/${a.contract_id}`}>
+                        <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
+                          Aplicar
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

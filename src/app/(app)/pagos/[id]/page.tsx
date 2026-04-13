@@ -10,6 +10,7 @@ import { RegisterPaymentForm } from "./register-form";
 import Link from "next/link";
 import { Building2, UserCheck, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WhatsAppOverdueButton } from "./whatsapp-overdue";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -36,6 +37,17 @@ export default async function PaymentDetailPage({ params }: Props) {
         backHref="/pagos"
         action={
           <div className="flex items-center gap-2">
+            {isPending && contract?.tenant?.phone && (
+              <WhatsAppOverdueButton
+                phone={contract.tenant.phone}
+                tenantName={contract.tenant.full_name ?? ""}
+                propertyAddress={`${contract.property?.address ?? ""}${contract.property?.unit ? ` - ${contract.property.unit}` : ""}`}
+                period={payment.period.substring(0, 7)}
+                amount={String(payment.amount_due)}
+                currency={contract.currency ?? "ARS"}
+                dueDate={formatDate(payment.due_date)}
+              />
+            )}
             {!isPending && (
               <a href={`/api/receipt/${id}`} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" size="sm">

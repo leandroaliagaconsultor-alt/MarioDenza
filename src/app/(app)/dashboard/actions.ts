@@ -27,7 +27,7 @@ export async function getDashboardStats() {
       .order("end_date"),
     // Overdue payments
     supabase.from("payments")
-      .select("id, period, amount_due, due_date, contract:contracts(property:properties(address, unit), tenant:tenants(full_name))")
+      .select("id, period, amount_due, due_date, contract:contracts(property:properties(address, unit), tenant:tenants(full_name, phone))")
       .eq("status", "vencido")
       .order("due_date"),
     // This month's commissions
@@ -37,8 +37,9 @@ export async function getDashboardStats() {
       .gte("period", new Date().toISOString().substring(0, 7) + "-01"),
     // Pending adjustments (next_adjustment_date <= today + 30 days)
     supabase.from("contract_adjustments")
-      .select("id, next_adjustment_date, contract_id, contract:contracts(property:properties(address, unit), tenant:tenants(full_name), current_rent)")
-      .lte("next_adjustment_date", new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]),
+      .select("id, next_adjustment_date, index_type, frequency_months, contract_id, contract:contracts(property:properties(address, unit), tenant:tenants(full_name, phone), current_rent, currency)")
+      .lte("next_adjustment_date", new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
+      .order("next_adjustment_date"),
   ]);
 
   const totalCommissions = (monthCommissions || []).reduce((sum, p) => sum + (p.commission_amount || 0), 0);
