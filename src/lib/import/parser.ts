@@ -2,7 +2,9 @@
  * Parse CSV string into rows.
  * Handles quoted fields, commas inside quotes, newlines.
  */
-export function parseCsv(text: string): string[][] {
+export function parseCsv(rawText: string): string[][] {
+  // Strip BOM and normalize line endings
+  const text = rawText.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const rows: string[][] = [];
   let current = "";
   let inQuotes = false;
@@ -48,7 +50,14 @@ export function parseCsv(text: string): string[][] {
 
 export function csvToObjects(rows: string[][]): Record<string, string>[] {
   if (rows.length < 2) return [];
-  const headers = rows[0].map((h) => h.toLowerCase().replace(/\s+/g, "_"));
+  const headers = rows[0].map((h) =>
+    h.replace(/^\uFEFF/, "")     // Remove BOM
+     .replace(/^["']+|["']+$/g, "") // Remove quotes
+     .trim()
+     .toLowerCase()
+     .replace(/\s+/g, "_")
+     .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+  );
   return rows.slice(1).map((row) => {
     const obj: Record<string, string> = {};
     headers.forEach((h, i) => { obj[h] = row[i] ?? ""; });
