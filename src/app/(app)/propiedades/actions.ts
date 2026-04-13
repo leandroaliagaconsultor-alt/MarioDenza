@@ -11,16 +11,26 @@ export async function getProperties(search?: string, status?: string) {
     .select("*, owner:owners(id, full_name)")
     .order("address");
 
-  if (search) {
-    query = query.or(`address.ilike.%${search}%,unit.ilike.%${search}%,city.ilike.%${search}%`);
-  }
-
   if (status) {
     query = query.eq("status", status);
   }
 
   const { data, error } = await query;
   if (error) throw error;
+
+  if (search) {
+    const s = search.toLowerCase();
+    return data.filter((p) => {
+      const ownerName = ((Array.isArray(p.owner) ? p.owner[0] : p.owner) as { full_name: string } | null)?.full_name ?? "";
+      return (
+        p.address?.toLowerCase().includes(s) ||
+        p.unit?.toLowerCase().includes(s) ||
+        p.city?.toLowerCase().includes(s) ||
+        ownerName.toLowerCase().includes(s)
+      );
+    });
+  }
+
   return data;
 }
 

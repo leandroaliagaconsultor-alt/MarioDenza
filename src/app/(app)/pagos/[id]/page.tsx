@@ -21,13 +21,28 @@ export default async function PaymentDetailPage({ params }: Props) {
   let payment;
   try { payment = await getPaymentById(id); } catch { notFound(); }
 
-  const contract = payment.contract as {
+  const contractRaw = payment.contract;
+  const contract = (Array.isArray(contractRaw) ? contractRaw[0] : contractRaw) as {
     id: string; currency: CurrencyType; commission_percentage: number; agency_collects: boolean;
+    late_fee_enabled: boolean; late_fee_type: string | null; late_fee_value: number | null;
     property: { id: string; address: string; unit?: string } | null;
     tenant: { id: string; full_name: string; phone?: string } | null;
   } | null;
   const currency = (contract?.currency ?? "ARS") as CurrencyType;
   const isPending = payment.status === "pendiente" || payment.status === "vencido";
+
+  // Calculate late fee if overdue
+  let suggestedLateFee = 0;
+  if (payment.status === "vencido" && contract?.late_fee_enabled && contract.late_fee_value) {
+    const daysOverdue = Math.max(0, Math.floor((Date.now() - new Date(payment.due_date).getTime()) / (1000 * 60 * 60 * 24)));
+    if (contract.late_fee_type === "percentage") {
+      suggestedLateFee = Math.round(payment.amount_due * (contract.late_fee_value / 100));
+    } else if (contract.late_fee_type === "fixed") {
+      suggestedLateFee = contract.late_fee_value;
+    } else if (contract.late_fee_type === "daily_percentage") {
+      suggestedLateFee = Math.round(payment.amount_due * (contract.late_fee_value / 100) * daysOverdue);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -153,6 +168,7 @@ export default async function PaymentDetailPage({ params }: Props) {
           paymentId={id}
           amountDue={payment.amount_due}
           currency={currency}
+          suggestedLateFee={suggestedLateFee}
         />
       )}
     </div>

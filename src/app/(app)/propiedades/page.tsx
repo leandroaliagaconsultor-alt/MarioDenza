@@ -33,7 +33,7 @@ export default async function PropiedadesPage({ searchParams }: Props) {
       />
 
       <div className="flex flex-wrap items-center gap-4">
-        <SearchInput placeholder="Buscar por direccion o ciudad..." />
+        <SearchInput placeholder="Buscar por direccion, ciudad o dueno..." />
         <div className="flex gap-2">
           <Link href="/propiedades">
             <Button variant={!status ? "default" : "outline"} size="sm" className={!status ? "bg-teal-600" : ""}>Todas</Button>

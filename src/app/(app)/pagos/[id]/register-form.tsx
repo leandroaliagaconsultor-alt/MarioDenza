@@ -21,9 +21,10 @@ interface Props {
   paymentId: string;
   amountDue: number;
   currency: CurrencyType;
+  suggestedLateFee?: number;
 }
 
-export function RegisterPaymentForm({ paymentId, amountDue, currency }: Props) {
+export function RegisterPaymentForm({ paymentId, amountDue, currency, suggestedLateFee = 0 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +38,7 @@ export function RegisterPaymentForm({ paymentId, amountDue, currency }: Props) {
       payment_method: "transferencia",
       discount_amount: 0,
       discount_reason: "",
-      late_fee_amount: 0,
+      late_fee_amount: suggestedLateFee,
       notes: "",
     },
   });

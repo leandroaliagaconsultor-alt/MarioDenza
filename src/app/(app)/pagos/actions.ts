@@ -60,6 +60,7 @@ export async function getPaymentById(id: string) {
       *,
       contract:contracts(
         id, currency, commission_percentage, agency_collects,
+        late_fee_enabled, late_fee_type, late_fee_value,
         property:properties(id, address, unit),
         tenant:tenants(id, full_name, phone)
       )

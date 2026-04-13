@@ -123,6 +123,20 @@ body {
   background: #9ca3af;
 }
 
+/* Responsive tables */
+@media (max-width: 768px) {
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  .overflow-x-auto table {
+    min-width: 600px;
+  }
+  /* Stack stat cards */
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
