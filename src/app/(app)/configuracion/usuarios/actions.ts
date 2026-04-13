@@ -33,6 +33,38 @@ export async function updateMyPassword(newPassword: string) {
   if (error) throw error;
 }
 
+export async function uploadAvatar(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const file = formData.get("avatar") as File;
+  if (!file) throw new Error("No se recibio archivo");
+  if (!file.type.startsWith("image/")) throw new Error("Solo se permiten imagenes");
+  if (file.size > 2 * 1024 * 1024) throw new Error("La imagen no puede superar 2MB");
+
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "png";
+  const path = `avatars/${user.id}.${ext}`;
+
+  const { error: uploadErr } = await supabase.storage
+    .from("documents")
+    .upload(path, file, { contentType: file.type, upsert: true });
+  if (uploadErr) throw uploadErr;
+
+  const { data: { publicUrl } } = supabase.storage
+    .from("documents")
+    .getPublicUrl(path);
+
+  const { error: updateErr } = await supabase.auth.updateUser({
+    data: { avatar_url: publicUrl + "?t=" + Date.now() },
+  });
+  if (updateErr) throw updateErr;
+
+  revalidatePath("/configuracion/usuarios");
+  revalidatePath("/dashboard");
+  return publicUrl;
+}
+
 export async function createUser(email: string, password: string) {
   const admin = createAdminClient();
 

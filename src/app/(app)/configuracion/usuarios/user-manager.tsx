@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, User, Trash2, Plus, Key, Mail, Check } from "lucide-react";
-import { updateMyEmail, updateMyPassword, createUser, deleteUser } from "./actions";
+import { updateMyEmail, updateMyPassword, createUser, deleteUser, uploadAvatar } from "./actions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/format";
@@ -21,11 +21,31 @@ interface UserInfo {
 interface Props {
   currentUserId: string;
   currentEmail: string;
+  currentAvatarUrl: string | null;
   users: UserInfo[];
 }
 
-export function UserManager({ currentUserId, currentEmail, users }: Props) {
+export function UserManager({ currentUserId, currentEmail, currentAvatarUrl, users }: Props) {
   const router = useRouter();
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+      await uploadAvatar(formData);
+      toast.success("Foto de perfil actualizada");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al subir foto");
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = "";
+    }
+  }
 
   // My profile
   const [newEmail, setNewEmail] = useState(currentEmail);
@@ -115,6 +135,31 @@ export function UserManager({ currentUserId, currentEmail, users }: Props) {
         <Separator className="my-4" />
 
         <div className="space-y-4">
+          {/* Avatar */}
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-gray-200 bg-teal-600 text-white">
+                {currentAvatarUrl ? (
+                  <img src={currentAvatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                ) : (
+                  <User className="h-7 w-7" />
+                )}
+              </div>
+              {uploadingAvatar && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Foto de perfil</p>
+              <label className="mt-1 inline-flex cursor-pointer items-center gap-1 text-sm text-teal-600 hover:text-teal-700">
+                Cambiar foto
+                <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+              </label>
+            </div>
+          </div>
+
           <div>
             <Label>Email</Label>
             <div className="mt-1 flex gap-2">

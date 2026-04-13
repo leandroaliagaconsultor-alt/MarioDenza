@@ -18,6 +18,7 @@ export default async function UsuariosPage() {
       <UserManager
         currentUserId={currentUser?.id ?? ""}
         currentEmail={currentUser?.email ?? ""}
+        currentAvatarUrl={(currentUser?.user_metadata?.avatar_url as string) ?? null}
         users={users.map((u) => ({
           id: u.id,
           email: u.email ?? "",

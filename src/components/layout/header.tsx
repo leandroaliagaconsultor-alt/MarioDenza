@@ -2,8 +2,14 @@ import { Suspense } from "react";
 import { Bell } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "./user-menu";
+import { createClient } from "@/lib/supabase/server";
 
-export function Header() {
+export async function Header() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const avatarUrl = (user?.user_metadata?.avatar_url as string) ?? null;
+  const email = user?.email ?? "";
+
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-gray-200 bg-white/80 px-6">
       <div />
@@ -13,7 +19,7 @@ export function Header() {
         }>
           <NotificationBell />
         </Suspense>
-        <UserMenu />
+        <UserMenu avatarUrl={avatarUrl} email={email} />
       </div>
     </header>
   );
