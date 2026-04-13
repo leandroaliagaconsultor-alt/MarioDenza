@@ -42,6 +42,31 @@ export async function getDashboardStats() {
       .order("next_adjustment_date"),
   ]);
 
+  // Maintenance properties count
+  const { count: maintenanceProperties } = await supabase
+    .from("properties").select("*", { count: "exact", head: true }).eq("status", "en_mantenimiento");
+
+  // Commission history (last 6 months)
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const { data: commissionHistory } = await supabase
+    .from("payments")
+    .select("period, commission_amount")
+    .eq("status", "pagado")
+    .gte("period", sixMonthsAgo.toISOString().substring(0, 7) + "-01")
+    .order("period");
+
+  // Group commissions by month
+  const commissionsByMonth: Record<string, number> = {};
+  for (const p of commissionHistory || []) {
+    const month = p.period.substring(0, 7);
+    commissionsByMonth[month] = (commissionsByMonth[month] || 0) + (p.commission_amount || 0);
+  }
+  const commissionChartData = Object.entries(commissionsByMonth)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([month, amount]) => ({ month: month.substring(5), amount }));
+
   const totalCommissions = (monthCommissions || []).reduce((sum, p) => sum + (p.commission_amount || 0), 0);
   const totalOverdue = (overduePayments || []).reduce((sum, p) => sum + (p.amount_due || 0), 0);
 
@@ -54,6 +79,8 @@ export async function getDashboardStats() {
     overduePayments: overduePayments || [],
     totalOverdue,
     totalCommissions,
+    maintenanceProperties: maintenanceProperties ?? 0,
+    commissionChartData,
     pendingAdjustments: pendingAdjustments || [],
   };
 }

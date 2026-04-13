@@ -50,6 +50,9 @@ export default async function ContratoDetailPage({ params }: Props) {
               label={CONTRACT_STATUSES[contract.status as ContractStatus]}
               colorClass={CONTRACT_STATUS_COLORS[contract.status as ContractStatus]}
             />
+            <Link href={`/contratos/${id}/historial`}>
+              <Button variant="outline" size="sm">Timeline</Button>
+            </Link>
             {(contract.status === "activo" || contract.status === "por_vencer") && (
               <ContractActions
                 contractId={id}

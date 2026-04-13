@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { INDEX_TYPES } from "@/lib/types/enums";
 import { DashboardWhatsApp } from "./dashboard-whatsapp";
+import { OccupancyChart } from "@/components/widgets/occupancy-chart";
+import { CommissionChart } from "@/components/widgets/commission-chart";
 
 function StatCard({ title, value, subtitle, icon: Icon, color }: {
   title: string; value: string; subtitle?: string; icon: React.ElementType; color: string;
@@ -52,6 +54,17 @@ export default async function DashboardPage() {
         <StatCard title="Pagos vencidos" value={String(stats.overduePayments.length)}
           subtitle={`Morosidad: ${formatCurrency(stats.totalOverdue)}`}
           icon={AlertTriangle} color="bg-amber-500" />
+      </div>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <OccupancyChart
+          occupied={stats.occupiedProperties}
+          available={stats.availableProperties}
+          maintenance={stats.maintenanceProperties}
+          total={stats.totalProperties}
+        />
+        <CommissionChart data={stats.commissionChartData} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

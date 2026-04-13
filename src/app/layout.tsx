@@ -10,8 +10,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Gestion Inmobiliaria",
-  description: "Sistema de gestion para inmobiliaria",
+  title: {
+    default: "Gestion Inmobiliaria",
+    template: "%s | Gestion Inmobiliaria",
+  },
+  description: "Sistema de gestion para inmobiliaria — Propiedades, contratos, pagos y aumentos",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
