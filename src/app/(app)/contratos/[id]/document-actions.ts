@@ -13,7 +13,25 @@ export async function uploadDocument(
   const file = formData.get("file") as File;
   if (!file) throw new Error("No se recibio archivo");
 
-  const ext = file.name.split(".").pop() ?? "bin";
+  const ALLOWED_TYPES = [
+    "application/pdf", "image/jpeg", "image/png", "image/webp",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ];
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    throw new Error("Tipo de archivo no permitido. Solo PDF, imagenes o documentos Word.");
+  }
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  if (file.size > MAX_SIZE) {
+    throw new Error("El archivo no puede superar 10MB");
+  }
+
+  const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? "bin";
+  const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "webp", "doc", "docx"];
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    throw new Error("Extension de archivo no permitida");
+  }
+
   const path = `${entityType}/${entityId}/${Date.now()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage

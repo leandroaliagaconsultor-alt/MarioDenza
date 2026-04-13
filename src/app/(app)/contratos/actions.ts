@@ -62,6 +62,18 @@ export async function createContract(values: ContractFormValues & { retroactive_
 
   const currentRent = values.retroactive_current_rent ?? parsed.base_rent;
 
+  // Validate property is not already occupied by another active contract
+  const { data: existingContract } = await supabase
+    .from("contracts")
+    .select("id")
+    .eq("property_id", parsed.property_id)
+    .in("status", ["activo", "por_vencer"])
+    .limit(1)
+    .single();
+  if (existingContract) {
+    throw new Error("La propiedad ya tiene un contrato activo. Finaliza el contrato actual antes de crear uno nuevo.");
+  }
+
   // Calculate ipc_referencia_inicial: the IPC value at the start of the contract
   let ipcReferenciaInicial = null;
   if (parsed.adjustment_index_type === "IPC" || parsed.adjustment_index_type === "ICL") {

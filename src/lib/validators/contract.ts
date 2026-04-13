@@ -28,7 +28,10 @@ export const contractFormSchema = z.object({
 
   // Step 5: Notes
   notes: z.string(),
-});
+}).refine(
+  (data) => !data.start_date || !data.end_date || data.end_date > data.start_date,
+  { message: "La fecha de fin debe ser posterior a la fecha de inicio", path: ["end_date"] }
+);
 
 export type ContractFormValues = z.infer<typeof contractFormSchema>;
 

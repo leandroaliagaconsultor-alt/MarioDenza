@@ -13,6 +13,11 @@ export async function GET(
   const { id } = await params;
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
   const { data: payment, error } = await supabase
     .from("payments")
     .select(`

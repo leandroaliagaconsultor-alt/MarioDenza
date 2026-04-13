@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("OCR error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error al procesar el PDF" },
+      { error: "No se pudieron extraer los datos del PDF. Intenta con otro archivo o carga los datos manualmente." },
       { status: 500 }
     );
   }

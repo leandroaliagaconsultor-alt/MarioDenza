@@ -5,56 +5,49 @@ import { createClient } from "@/lib/supabase/server";
 export async function getDashboardStats() {
   const supabase = await createClient();
 
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
   const [
     { count: totalProperties },
     { count: occupiedProperties },
     { count: availableProperties },
+    { count: maintenanceProperties },
     { count: activeContracts },
     { data: expiringContracts },
     { data: overduePayments },
     { data: monthCommissions },
     { data: pendingAdjustments },
+    { data: commissionHistory },
   ] = await Promise.all([
     supabase.from("properties").select("*", { count: "exact", head: true }),
     supabase.from("properties").select("*", { count: "exact", head: true }).eq("status", "ocupada"),
     supabase.from("properties").select("*", { count: "exact", head: true }).eq("status", "disponible"),
+    supabase.from("properties").select("*", { count: "exact", head: true }).eq("status", "en_mantenimiento"),
     supabase.from("contracts").select("*", { count: "exact", head: true }).eq("status", "activo"),
-    // Contracts expiring in next 90 days
     supabase.from("contracts")
       .select("id, end_date, property:properties(address, unit), tenant:tenants(full_name)")
       .eq("status", "activo")
       .lte("end_date", new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
       .order("end_date"),
-    // Overdue payments
     supabase.from("payments")
       .select("id, period, amount_due, due_date, contract:contracts(property:properties(address, unit), tenant:tenants(full_name, phone))")
       .eq("status", "vencido")
       .order("due_date"),
-    // This month's commissions
     supabase.from("payments")
       .select("commission_amount")
       .eq("status", "pagado")
       .gte("period", new Date().toISOString().substring(0, 7) + "-01"),
-    // Pending adjustments (next_adjustment_date <= today + 30 days)
     supabase.from("contract_adjustments")
       .select("id, next_adjustment_date, index_type, frequency_months, contract_id, contract:contracts(property:properties(address, unit), tenant:tenants(full_name, phone), current_rent, currency)")
       .lte("next_adjustment_date", new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
       .order("next_adjustment_date"),
+    supabase.from("payments")
+      .select("period, commission_amount")
+      .eq("status", "pagado")
+      .gte("period", sixMonthsAgo.toISOString().substring(0, 7) + "-01")
+      .order("period"),
   ]);
-
-  // Maintenance properties count
-  const { count: maintenanceProperties } = await supabase
-    .from("properties").select("*", { count: "exact", head: true }).eq("status", "en_mantenimiento");
-
-  // Commission history (last 6 months)
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const { data: commissionHistory } = await supabase
-    .from("payments")
-    .select("period, commission_amount")
-    .eq("status", "pagado")
-    .gte("period", sixMonthsAgo.toISOString().substring(0, 7) + "-01")
-    .order("period");
 
   // Group commissions by month
   const commissionsByMonth: Record<string, number> = {};
