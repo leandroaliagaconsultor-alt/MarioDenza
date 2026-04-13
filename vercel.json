@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/generate-payments",
+      "schedule": "0 6 1 * *"
+    },
+    {
+      "path": "/api/cron/check-adjustments",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/check-expirations",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/check-overdue",
+      "schedule": "0 12 * * *"
+    }
+  ]
+}

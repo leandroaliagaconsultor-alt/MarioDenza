@@ -32,6 +32,3 @@ export function formatPhone(phone: string): string {
   return phone;
 }
 
-export function cn(...classes: (string | undefined | false | null)[]): string {
-  return classes.filter(Boolean).join(" ");
-}

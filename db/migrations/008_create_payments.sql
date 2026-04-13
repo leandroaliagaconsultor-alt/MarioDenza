@@ -1,0 +1,20 @@
+CREATE TABLE payments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  contract_id uuid NOT NULL REFERENCES contracts(id) ON DELETE RESTRICT,
+  period date NOT NULL,
+  due_date date NOT NULL,
+  paid_date date,
+  amount_due numeric NOT NULL CHECK (amount_due >= 0),
+  amount_paid numeric DEFAULT 0 CHECK (amount_paid >= 0),
+  discount_amount numeric DEFAULT 0 CHECK (discount_amount >= 0),
+  late_fee_amount numeric DEFAULT 0 CHECK (late_fee_amount >= 0),
+  commission_amount numeric DEFAULT 0 CHECK (commission_amount >= 0),
+  owner_payout numeric DEFAULT 0 CHECK (owner_payout >= 0),
+  status payment_status NOT NULL DEFAULT 'pendiente',
+  payment_method payment_method,
+  receipt_pdf_url text,
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT unique_contract_period UNIQUE (contract_id, period)
+);
