@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
 interface SearchInputProps {
@@ -17,7 +17,6 @@ export function SearchInput({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [value, setValue] = useState(searchParams.get(paramName) ?? "");
-  const [, startTransition] = useTransition();
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   function handleChange(term: string) {
@@ -32,9 +31,7 @@ export function SearchInput({
         params.delete(paramName);
       }
       params.delete("page");
-      startTransition(() => {
-        router.replace(`${pathname}?${params.toString()}`);
-      });
+      router.replace(`${pathname}?${params.toString()}`);
     }, 400);
   }
 
