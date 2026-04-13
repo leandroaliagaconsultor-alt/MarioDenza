@@ -103,7 +103,7 @@ export default async function ContratoDetailPage({ params }: Props) {
               <Link href={`/propiedades/${property.id}`} className="font-medium text-gray-900 hover:text-teal-600">
                 {property.address}{property.unit ? ` - ${property.unit}` : ""}
               </Link>
-              <p className="mt-1 text-sm text-gray-500">Dueno: {property.owner?.full_name}</p>
+              <p className="mt-1 text-sm text-gray-500">Dueno: {(Array.isArray(property.owner) ? property.owner[0] : property.owner)?.full_name}</p>
             </div>
           )}
         </div>
