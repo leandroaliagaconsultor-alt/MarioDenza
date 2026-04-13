@@ -206,7 +206,7 @@ export default async function ContratoDetailPage({ params }: Props) {
       )}
 
       {/* WhatsApp */}
-      {tenant?.phone && contract.status === "activo" && (
+      {tenant?.phone && (contract.status === "activo" || contract.status === "por_vencer") && (
         <WhatsAppButton
           tenantPhone={tenant.phone}
           tenantName={tenant.full_name}
