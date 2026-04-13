@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Upload, FileText, Image, Trash2, ExternalLink } from "lucide-react";
-import { uploadDocument, deleteDocument } from "@/app/(app)/contratos/[id]/document-actions";
+import { uploadDocument, deleteDocument } from "@/lib/documents/actions";
 import { DOCUMENT_CATEGORIES } from "@/lib/types/enums";
 import type { DocumentCategory } from "@/lib/types/enums";
 import { useRouter } from "next/navigation";

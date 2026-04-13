@@ -9,7 +9,7 @@ import { DuenosDeleteButton } from "../delete-button";
 import { Pencil, Phone, Mail, MapPin, Landmark, Building2 } from "lucide-react";
 import { PROPERTY_STATUSES, PROPERTY_STATUS_COLORS, PROPERTY_TYPES, CONTRACT_STATUSES, CONTRACT_STATUS_COLORS } from "@/lib/types/enums";
 import { DocumentUpload } from "@/components/ui/document-upload";
-import { getDocuments } from "@/app/(app)/contratos/[id]/document-actions";
+import { getDocuments } from "@/lib/documents/actions";
 import type { PropertyStatus, PropertyType, ContractStatus, CurrencyType } from "@/lib/types/enums";
 import { formatCurrency } from "@/lib/utils/format";
 

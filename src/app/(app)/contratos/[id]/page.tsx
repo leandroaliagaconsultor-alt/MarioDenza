@@ -16,7 +16,7 @@ import { ContractActions } from "./contract-actions";
 import { AdjustmentPanel } from "./adjustment-panel";
 import { WhatsAppButton } from "./whatsapp-button";
 import { DocumentUpload } from "@/components/ui/document-upload";
-import { getDocuments } from "./document-actions";
+import { getDocuments } from "@/lib/documents/actions";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -33,8 +33,10 @@ export default async function ContratoDetailPage({ params }: Props) {
     getDocuments("contract", id),
   ]);
 
-  const property = contract.property as { id: string; address: string; unit?: string; owner: { full_name: string } } | null;
-  const tenant = contract.tenant as { id: string; full_name: string; phone?: string; email?: string } | null;
+  const propertyRaw = contract.property;
+  const property = (Array.isArray(propertyRaw) ? propertyRaw[0] : propertyRaw) as { id: string; address: string; unit?: string; owner: { full_name: string } | { full_name: string }[] } | null;
+  const tenantRaw = contract.tenant;
+  const tenant = (Array.isArray(tenantRaw) ? tenantRaw[0] : tenantRaw) as { id: string; full_name: string; phone?: string; email?: string } | null;
   const adjConfig = (contract.contract_adjustments as { index_type: string; frequency_months: number; next_adjustment_date: string; fixed_percentage?: number }[])?.[0];
   const currency = contract.currency as CurrencyType;
 

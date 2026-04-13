@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getContractById, getContractPayments, getAdjustmentHistory } from "../../actions";
-import { getDocuments } from "../document-actions";
+import { getDocuments } from "@/lib/documents/actions";
 import { PageHeader } from "@/components/ui/page-header";
 import { CreditCard, TrendingUp, FileText, Calendar } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils/format";

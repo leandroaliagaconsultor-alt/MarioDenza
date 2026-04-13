@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { InquilinosDeleteButton } from "../delete-button";
 import { DocumentUpload } from "@/components/ui/document-upload";
-import { getDocuments } from "@/app/(app)/contratos/[id]/document-actions";
+import { getDocuments } from "@/lib/documents/actions";
 import { Pencil, Phone, Mail, Shield, FileText } from "lucide-react";
 import { CONTRACT_STATUSES, CONTRACT_STATUS_COLORS } from "@/lib/types/enums";
 import type { ContractStatus, CurrencyType } from "@/lib/types/enums";

@@ -10,7 +10,7 @@ import { Pencil, MapPin, User } from "lucide-react";
 import { PROPERTY_TYPES, PROPERTY_STATUSES, PROPERTY_STATUS_COLORS } from "@/lib/types/enums";
 import type { PropertyType, PropertyStatus } from "@/lib/types/enums";
 import { DocumentUpload } from "@/components/ui/document-upload";
-import { getDocuments } from "@/app/(app)/contratos/[id]/document-actions";
+import { getDocuments } from "@/lib/documents/actions";
 
 interface Props {
   params: Promise<{ id: string }>;
