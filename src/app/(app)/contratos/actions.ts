@@ -62,6 +62,17 @@ export async function createContract(values: ContractFormValues & { retroactive_
 
   const currentRent = values.retroactive_current_rent ?? parsed.base_rent;
 
+  // Calculate ipc_referencia_inicial: the IPC value at the start of the contract
+  let ipcReferenciaInicial = null;
+  if (parsed.adjustment_index_type === "IPC" || parsed.adjustment_index_type === "ICL") {
+    const startDate = new Date(parsed.start_date);
+    const refPeriod = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}`;
+    const refValue = await getCachedIndex(supabase, parsed.adjustment_index_type as "ICL" | "IPC", refPeriod + "-01");
+    if (refValue !== null) {
+      ipcReferenciaInicial = { period: refPeriod, value: refValue };
+    }
+  }
+
   // Insert contract
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
@@ -73,6 +84,7 @@ export async function createContract(values: ContractFormValues & { retroactive_
       currency: parsed.currency,
       base_rent: parsed.base_rent,
       current_rent: currentRent,
+      ipc_referencia_inicial: ipcReferenciaInicial,
       payment_day: parsed.payment_day,
       legal_framework: parsed.legal_framework,
       agency_collects: parsed.agency_collects,

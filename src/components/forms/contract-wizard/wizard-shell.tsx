@@ -34,6 +34,7 @@ export interface TenantOption {
 interface WizardShellProps {
   properties: PropertyOption[];
   tenants: TenantOption[];
+  prefill?: Partial<ContractFormValues>;
 }
 
 const STEPS = [
@@ -45,8 +46,9 @@ const STEPS = [
   { title: "Confirmacion", fields: [] },
 ] as const;
 
-export function WizardShell({ properties: initialProperties, tenants: initialTenants }: WizardShellProps) {
-  const [step, setStep] = useState(0);
+export function WizardShell({ properties: initialProperties, tenants: initialTenants, prefill }: WizardShellProps) {
+  // If prefill (renewal), skip to economic data step (step 3)
+  const [step, setStep] = useState(prefill ? 3 : 0);
   const [loading, setLoading] = useState(false);
   const [ocrData, setOcrData] = useState<ExtractedContractData | null>(null);
   // Mutable lists — grow when user creates inline
@@ -56,7 +58,7 @@ export function WizardShell({ properties: initialProperties, tenants: initialTen
 
   const methods = useForm<ContractFormValues>({
     resolver: zodResolver(contractFormSchema),
-    defaultValues: contractDefaults,
+    defaultValues: { ...contractDefaults, ...prefill },
     mode: "onTouched",
   });
 

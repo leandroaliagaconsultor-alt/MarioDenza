@@ -9,6 +9,8 @@ import { PropiedadesDeleteButton } from "../delete-button";
 import { Pencil, MapPin, User } from "lucide-react";
 import { PROPERTY_TYPES, PROPERTY_STATUSES, PROPERTY_STATUS_COLORS } from "@/lib/types/enums";
 import type { PropertyType, PropertyStatus } from "@/lib/types/enums";
+import { DocumentUpload } from "@/components/ui/document-upload";
+import { getDocuments } from "@/app/(app)/contratos/[id]/document-actions";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -19,6 +21,7 @@ export default async function PropiedadDetailPage({ params }: Props) {
   let property;
   try { property = await getPropertyById(id); } catch { notFound(); }
 
+  const documents = await getDocuments("property", id);
   const owner = property.owner as { id: string; full_name: string; phone?: string; email?: string } | null;
 
   return (
@@ -78,6 +81,8 @@ export default async function PropiedadDetailPage({ params }: Props) {
           </div>
         </div>
       )}
+
+      <DocumentUpload entityType="property" entityId={id} documents={documents} />
 
       {property.notes && (
         <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">

@@ -6,6 +6,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { InquilinosDeleteButton } from "../delete-button";
+import { DocumentUpload } from "@/components/ui/document-upload";
+import { getDocuments } from "@/app/(app)/contratos/[id]/document-actions";
 import { Pencil, Phone, Mail, Shield, FileText } from "lucide-react";
 import { CONTRACT_STATUSES, CONTRACT_STATUS_COLORS } from "@/lib/types/enums";
 import type { ContractStatus, CurrencyType } from "@/lib/types/enums";
@@ -20,7 +22,10 @@ export default async function InquilinoDetailPage({ params }: Props) {
   let tenant;
   try { tenant = await getTenantById(id); } catch { notFound(); }
 
-  const contracts = await getTenantContracts(id);
+  const [contracts, documents] = await Promise.all([
+    getTenantContracts(id),
+    getDocuments("tenant", id),
+  ]);
   const guarantors = (tenant.guarantors || []) as { full_name: string; dni: string; phone: string; address: string }[];
 
   return (
@@ -126,6 +131,8 @@ export default async function InquilinoDetailPage({ params }: Props) {
           </div>
         </div>
       )}
+
+      <DocumentUpload entityType="tenant" entityId={id} documents={documents} />
 
       {tenant.notes && (
         <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">

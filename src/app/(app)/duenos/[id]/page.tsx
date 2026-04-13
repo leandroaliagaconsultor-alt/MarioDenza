@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { DuenosDeleteButton } from "../delete-button";
 import { Pencil, Phone, Mail, MapPin, Landmark, Building2 } from "lucide-react";
 import { PROPERTY_STATUSES, PROPERTY_STATUS_COLORS, PROPERTY_TYPES, CONTRACT_STATUSES, CONTRACT_STATUS_COLORS } from "@/lib/types/enums";
+import { DocumentUpload } from "@/components/ui/document-upload";
+import { getDocuments } from "@/app/(app)/contratos/[id]/document-actions";
 import type { PropertyStatus, PropertyType, ContractStatus, CurrencyType } from "@/lib/types/enums";
 import { formatCurrency } from "@/lib/utils/format";
 
@@ -24,7 +26,10 @@ export default async function DuenoDetailPage({ params }: Props) {
     notFound();
   }
 
-  const properties = await getOwnerProperties(id);
+  const [properties, documents] = await Promise.all([
+    getOwnerProperties(id),
+    getDocuments("owner", id),
+  ]);
   const bankInfo = (owner.bank_info || {}) as Record<string, string>;
 
   return (
@@ -179,6 +184,8 @@ export default async function DuenoDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      <DocumentUpload entityType="owner" entityId={id} documents={documents} />
 
       {owner.notes && (
         <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">

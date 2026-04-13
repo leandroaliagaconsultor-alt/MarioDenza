@@ -15,6 +15,8 @@ import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { ContractActions } from "./contract-actions";
 import { AdjustmentPanel } from "./adjustment-panel";
 import { WhatsAppButton } from "./whatsapp-button";
+import { DocumentUpload } from "@/components/ui/document-upload";
+import { getDocuments } from "./document-actions";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -25,9 +27,10 @@ export default async function ContratoDetailPage({ params }: Props) {
   let contract;
   try { contract = await getContractById(id); } catch { notFound(); }
 
-  const [payments, adjustments] = await Promise.all([
+  const [payments, adjustments, documents] = await Promise.all([
     getContractPayments(id),
     getAdjustmentHistory(id),
+    getDocuments("contract", id),
   ]);
 
   const property = contract.property as { id: string; address: string; unit?: string; owner: { full_name: string } } | null;
@@ -47,7 +50,18 @@ export default async function ContratoDetailPage({ params }: Props) {
               label={CONTRACT_STATUSES[contract.status as ContractStatus]}
               colorClass={CONTRACT_STATUS_COLORS[contract.status as ContractStatus]}
             />
-            {contract.status === "activo" && <ContractActions contractId={id} />}
+            {(contract.status === "activo" || contract.status === "por_vencer") && (
+              <ContractActions
+                contractId={id}
+                propertyId={contract.property_id}
+                tenantId={contract.tenant_id}
+                currentRent={contract.current_rent}
+                currency={contract.currency}
+                endDate={contract.end_date}
+                adjustmentIndexType={adjConfig?.index_type}
+                adjustmentFrequency={adjConfig?.frequency_months}
+              />
+            )}
           </div>
         }
       />
@@ -258,6 +272,9 @@ export default async function ContratoDetailPage({ params }: Props) {
           </div>
         </div>
       )}
+
+      {/* Documents */}
+      <DocumentUpload entityType="contract" entityId={id} documents={documents} />
 
       {contract.notes && (
         <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
