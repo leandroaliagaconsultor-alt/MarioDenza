@@ -171,6 +171,41 @@ export async function createContract(values: ContractFormValues & { retroactive_
   return contract.id;
 }
 
+export async function updateContract(id: string, values: {
+  start_date: string;
+  end_date: string;
+  current_rent: number;
+  payment_day: number;
+  legal_framework: string;
+  agency_collects: boolean;
+  commission_percentage: number;
+  late_fee_enabled: boolean;
+  late_fee_type: string | null;
+  late_fee_value: number | null;
+  notes: string;
+}) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("contracts")
+    .update({
+      start_date: values.start_date,
+      end_date: values.end_date,
+      current_rent: values.current_rent,
+      payment_day: values.payment_day,
+      legal_framework: values.legal_framework,
+      agency_collects: values.agency_collects,
+      commission_percentage: values.commission_percentage,
+      late_fee_enabled: values.late_fee_enabled,
+      late_fee_type: values.late_fee_enabled ? values.late_fee_type : null,
+      late_fee_value: values.late_fee_enabled ? values.late_fee_value : null,
+      notes: values.notes || null,
+    })
+    .eq("id", id);
+  if (error) throw error;
+  revalidatePath(`/contratos/${id}`);
+  revalidatePath("/contratos");
+}
+
 export async function finalizeContract(id: string) {
   const supabase = await createClient();
 

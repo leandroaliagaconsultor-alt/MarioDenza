@@ -54,6 +54,9 @@ export default async function ContratoDetailPage({ params }: Props) {
               label={CONTRACT_STATUSES[contract.status as ContractStatus]}
               colorClass={CONTRACT_STATUS_COLORS[contract.status as ContractStatus]}
             />
+            <Link href={`/contratos/${id}/editar`}>
+              <Button variant="outline" size="sm">Editar</Button>
+            </Link>
             <Link href={`/contratos/${id}/historial`}>
               <Button variant="outline" size="sm">Timeline</Button>
             </Link>
