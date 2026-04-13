@@ -11,10 +11,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Gestion Inmobiliaria",
-    template: "%s | Gestion Inmobiliaria",
+    default: "Mario Denza Propiedades",
+    template: "%s | Mario Denza Propiedades",
   },
-  description: "Sistema de gestion para inmobiliaria — Propiedades, contratos, pagos y aumentos",
+  description: "Sistema de gestion — Mario Denza Propiedades, Mercedes, Buenos Aires",
   icons: {
     icon: "/favicon.svg",
   },

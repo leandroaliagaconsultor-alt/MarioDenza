@@ -59,11 +59,14 @@ export function Sidebar() {
         {/* Logo + close on mobile */}
         <div className="flex h-16 items-center justify-between border-b border-gray-800 px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white">
-              <Building2 className="h-5 w-5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7ab929] text-white font-bold text-sm">
+              MD
             </div>
             {!collapsed && (
-              <span className="truncate text-sm font-bold text-white">Inmobiliaria</span>
+              <div className="truncate">
+                <span className="text-sm font-bold text-white">Mario Denza</span>
+                <span className="block text-[10px] text-gray-400">Propiedades</span>
+              </div>
             )}
           </div>
           <button

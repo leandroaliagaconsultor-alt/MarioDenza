@@ -38,14 +38,17 @@ export default function LoginPage() {
     <div className="w-full max-w-sm">
       <div className="rounded-2xl border border-gray-200 bg-white/80 px-8 py-10 shadow-xl backdrop-blur-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-teal-600 text-white shadow-lg">
-            <Building2 className="h-7 w-7" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#1a2744] text-white shadow-lg">
+            <span className="text-xl font-bold text-[#7ab929]">MD</span>
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-gray-900">
-              Gestion Inmobiliaria
+            <h1 className="text-xl font-bold text-[#1a2744]">
+              Mario Denza
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#7ab929]">
+              Propiedades
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
               Ingresa con tu cuenta
             </p>
           </div>
