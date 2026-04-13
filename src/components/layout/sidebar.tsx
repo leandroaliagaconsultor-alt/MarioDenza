@@ -57,14 +57,14 @@ export function Sidebar() {
         `}
       >
         {/* Logo + close on mobile */}
-        <div className="flex h-16 items-center justify-between border-b border-gray-800 px-4">
-          <div className="flex items-center gap-2">
+        <div className={`flex items-center justify-between border-b border-gray-800 px-4 ${collapsed ? "h-16" : "h-20"}`}>
+          <div className="flex items-center">
             {collapsed ? (
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7ab929] text-white font-bold text-sm">
                 MD
               </div>
             ) : (
-              <img src="/logo.png" alt="Mario Denza Propiedades" className="h-10 brightness-0 invert" />
+              <img src="/logo.png" alt="Mario Denza Propiedades" className="h-14 w-auto brightness-0 invert" />
             )}
           </div>
           <button
