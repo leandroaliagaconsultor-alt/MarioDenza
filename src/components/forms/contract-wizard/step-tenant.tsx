@@ -21,6 +21,26 @@ interface Props {
 export function StepTenant({ tenants, ocrData, onTenantCreated }: Props) {
   const { setValue, watch, formState: { errors } } = useFormContext<ContractFormValues>();
   const selectedId = watch("tenant_id");
+  const coTenantIds = (watch("co_tenant_ids") as string[] | undefined) ?? [];
+
+  function toggleCoTenant(id: string) {
+    const next = coTenantIds.includes(id)
+      ? coTenantIds.filter((x) => x !== id)
+      : [...coTenantIds, id];
+    setValue("co_tenant_ids", next, { shouldValidate: true });
+  }
+
+  // Sugerencia anti-duplicado: ¿el inquilino del OCR ya está cargado? (match por DNI o nombre)
+  const ocrName = ocrData?.tenant_name?.toLowerCase().trim();
+  const ocrDni = ocrData?.tenant_dni?.replace(/\D/g, "");
+  const tenantMatches = !selectedId && (ocrName || ocrDni)
+    ? tenants
+        .filter((t) => {
+          const tDni = (t.dni ?? "").replace(/\D/g, "");
+          return (ocrDni && tDni && tDni === ocrDni) || (!!ocrName && t.full_name.toLowerCase().includes(ocrName));
+        })
+        .slice(0, 5)
+    : [];
 
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -51,8 +71,8 @@ export function StepTenant({ tenants, ocrData, onTenantCreated }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* OCR suggestion */}
-      {ocrData?.tenant_name && !selectedId && (
+      {/* OCR suggestion (solo si no encontramos coincidencias ya cargadas) */}
+      {ocrData?.tenant_name && !selectedId && tenantMatches.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
           <div className="flex items-center gap-1.5 font-medium text-amber-700">
             <Sparkles className="h-4 w-4" /> La IA detecto este inquilino:
@@ -65,8 +85,34 @@ export function StepTenant({ tenants, ocrData, onTenantCreated }: Props) {
         </div>
       )}
 
+      {/* Anti-duplicado: el inquilino ya podría estar cargado */}
+      {tenantMatches.length > 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
+          <div className="flex items-center gap-1.5 font-medium text-amber-700">
+            <Sparkles className="h-4 w-4" /> Este inquilino podría ya estar cargado:
+          </div>
+          <div className="mt-2 space-y-1.5">
+            {tenantMatches.map((t) => (
+              <div key={t.id} className="flex items-center justify-between gap-2">
+                <span className="text-amber-800">{t.full_name}{t.dni ? ` · ${t.dni}` : ""}</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-300 text-amber-800 hover:bg-amber-100"
+                  onClick={() => setValue("tenant_id", t.id, { shouldValidate: true })}
+                >
+                  Usar este
+                </Button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-amber-600">O creá uno nuevo si no es ninguno.</p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
-        <Label>Selecciona un inquilino *</Label>
+        <Label>Inquilino principal *</Label>
         <Button type="button" variant="outline" size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="mr-1 h-3.5 w-3.5" /> Crear nuevo
         </Button>
@@ -119,7 +165,10 @@ export function StepTenant({ tenants, ocrData, onTenantCreated }: Props) {
             <button
               key={t.id}
               type="button"
-              onClick={() => setValue("tenant_id", t.id, { shouldValidate: true })}
+              onClick={() => {
+                setValue("tenant_id", t.id, { shouldValidate: true });
+                setValue("co_tenant_ids", coTenantIds.filter((x) => x !== t.id), { shouldValidate: true });
+              }}
               className={`flex items-start gap-3 rounded-lg border p-4 text-left transition ${
                 selectedId === t.id
                   ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500/20"
@@ -134,6 +183,44 @@ export function StepTenant({ tenants, ocrData, onTenantCreated }: Props) {
               {selectedId === t.id && <Check className="h-5 w-5 text-teal-600" />}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Co-inquilinos (opcional) */}
+      {selectedId && tenants.filter((t) => t.id !== selectedId).length > 0 && (
+        <div className="space-y-2 border-t border-gray-100 pt-4">
+          <Label>Co-inquilinos (opcional)</Label>
+          <p className="text-xs text-gray-500">Marcá otros inquilinos que firman el mismo contrato.</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {tenants.filter((t) => t.id !== selectedId).map((t) => {
+              const checked = coTenantIds.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => toggleCoTenant(t.id)}
+                  className={`flex items-center gap-2 rounded-lg border p-3 text-left text-sm transition ${
+                    checked
+                      ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500/20"
+                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${checked ? "border-teal-600 bg-teal-600 text-white" : "border-gray-300"}`}>
+                    {checked && <Check className="h-3 w-3" />}
+                  </span>
+                  <span className="flex-1">
+                    <span className="font-medium text-gray-900">{t.full_name}</span>
+                    {t.dni && <span className="text-gray-500"> · {t.dni}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {coTenantIds.length > 0 && (
+            <p className="text-xs text-teal-700">
+              {coTenantIds.length} co-inquilino{coTenantIds.length > 1 ? "s" : ""} seleccionado{coTenantIds.length > 1 ? "s" : ""}.
+            </p>
+          )}
         </div>
       )}
     </div>

@@ -9,6 +9,7 @@ export async function getOwners(search?: string) {
   let query = supabase
     .from("owners")
     .select("*")
+    .is("deleted_at", null)
     .order("full_name");
 
   if (search) {
@@ -73,6 +74,7 @@ export async function getOwnerProperties(ownerId: string) {
     .from("properties")
     .select("id, address, unit, city, type, status, contracts:contracts(id, tenant:tenants(full_name), current_rent, currency, status)")
     .eq("owner_id", ownerId)
+    .is("deleted_at", null)
     .order("address");
   if (error) throw error;
   return data;
@@ -80,12 +82,22 @@ export async function getOwnerProperties(ownerId: string) {
 
 export async function deleteOwner(id: string) {
   const supabase = await createClient();
-  const { error } = await supabase.from("owners").delete().eq("id", id);
-  if (error) {
-    if (error.code === "23503") {
-      throw new Error("No se puede eliminar: tiene propiedades asociadas");
-    }
-    throw error;
+
+  // No archivar si tiene propiedades activas (evita ocultar una contraparte en uso)
+  const { count } = await supabase
+    .from("properties")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", id)
+    .is("deleted_at", null);
+  if (count && count > 0) {
+    throw new Error("No se puede eliminar: tiene propiedades asociadas");
   }
+
+  // Soft-delete: nunca se pierde el registro
+  const { error } = await supabase
+    .from("owners")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
   revalidatePath("/duenos");
 }

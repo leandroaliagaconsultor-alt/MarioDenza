@@ -44,7 +44,7 @@ export async function importProperties(rows: Record<string, string>[]) {
   const supabase = await createClient();
 
   // Resolve owner names to IDs
-  const { data: owners } = await supabase.from("owners").select("id, full_name");
+  const { data: owners } = await supabase.from("owners").select("id, full_name").is("deleted_at", null);
   const ownerMap = new Map((owners || []).map((o) => [o.full_name.toLowerCase(), o.id]));
 
   const errors: string[] = [];

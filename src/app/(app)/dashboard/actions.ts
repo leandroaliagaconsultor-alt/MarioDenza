@@ -20,10 +20,10 @@ export async function getDashboardStats() {
     { data: pendingAdjustments },
     { data: commissionHistory },
   ] = await Promise.all([
-    supabase.from("properties").select("*", { count: "exact", head: true }),
-    supabase.from("properties").select("*", { count: "exact", head: true }).eq("status", "ocupada"),
-    supabase.from("properties").select("*", { count: "exact", head: true }).eq("status", "disponible"),
-    supabase.from("properties").select("*", { count: "exact", head: true }).eq("status", "en_mantenimiento"),
+    supabase.from("properties").select("*", { count: "exact", head: true }).is("deleted_at", null),
+    supabase.from("properties").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("status", "ocupada"),
+    supabase.from("properties").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("status", "disponible"),
+    supabase.from("properties").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("status", "en_mantenimiento"),
     supabase.from("contracts").select("*", { count: "exact", head: true }).eq("status", "activo"),
     supabase.from("contracts")
       .select("id, end_date, property:properties(address, unit), tenant:tenants(full_name)")

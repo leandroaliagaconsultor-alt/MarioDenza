@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Building2, Users, UserCheck, FileText,
-  CreditCard, BarChart3, Settings, Menu, X,
+  CreditCard, Wallet, TrendingUp, BarChart3, Settings, Menu, X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -15,11 +15,13 @@ const navigation = [
   { name: "Inquilinos", href: "/inquilinos", icon: UserCheck },
   { name: "Contratos", href: "/contratos", icon: FileText },
   { name: "Pagos", href: "/pagos", icon: CreditCard },
+  { name: "Liquidaciones", href: "/liquidaciones", icon: Wallet },
+  { name: "Aumentos", href: "/aumentos", icon: TrendingUp },
   { name: "Reportes", href: "/reportes", icon: BarChart3 },
   { name: "Configuración", href: "/configuracion", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ adjustmentsCount = 0 }: { adjustmentsCount?: number }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -80,6 +82,11 @@ export function Sidebar() {
               >
                 <item.icon className="h-5 w-5 shrink-0" />
                 <span className="truncate">{item.name}</span>
+                {item.href === "/aumentos" && adjustmentsCount > 0 && (
+                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-xs font-bold text-yellow-900">
+                    {adjustmentsCount}
+                  </span>
+                )}
               </Link>
             );
           })}

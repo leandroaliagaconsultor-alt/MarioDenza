@@ -9,6 +9,7 @@ export async function getProperties(search?: string, status?: string) {
   let query = supabase
     .from("properties")
     .select("*, owner:owners(id, full_name)")
+    .is("deleted_at", null)
     .order("address");
 
   if (status) {
@@ -85,13 +86,22 @@ export async function updateProperty(id: string, values: PropertyFormValues) {
 
 export async function deleteProperty(id: string) {
   const supabase = await createClient();
-  const { error } = await supabase.from("properties").delete().eq("id", id);
-  if (error) {
-    if (error.code === "23503") {
-      throw new Error("No se puede eliminar: tiene contratos asociados");
-    }
-    throw error;
+
+  // No archivar si tiene contratos asociados (histórico de pagos colgando)
+  const { count } = await supabase
+    .from("contracts")
+    .select("id", { count: "exact", head: true })
+    .eq("property_id", id);
+  if (count && count > 0) {
+    throw new Error("No se puede eliminar: tiene contratos asociados");
   }
+
+  // Soft-delete: nunca se pierde el registro
+  const { error } = await supabase
+    .from("properties")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
   revalidatePath("/propiedades");
 }
 
@@ -100,6 +110,7 @@ export async function getAllOwners() {
   const { data, error } = await supabase
     .from("owners")
     .select("id, full_name")
+    .is("deleted_at", null)
     .order("full_name");
   if (error) throw error;
   return data;

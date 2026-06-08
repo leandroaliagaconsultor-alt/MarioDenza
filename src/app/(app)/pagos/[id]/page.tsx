@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Separator } from "@/components/ui/separator";
 import { PAYMENT_STATUSES, PAYMENT_STATUS_COLORS, PAYMENT_METHODS } from "@/lib/types/enums";
 import type { PaymentStatus, CurrencyType, PaymentMethod } from "@/lib/types/enums";
-import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { formatCurrency, formatDate, formatReceiptNumber } from "@/lib/utils/format";
 import { RegisterPaymentForm } from "./register-form";
 import Link from "next/link";
 import { Building2, UserCheck, FileDown } from "lucide-react";
@@ -128,6 +128,12 @@ export default async function PaymentDetailPage({ params }: Props) {
           <h2 className="text-sm font-semibold text-gray-700">Detalle del pago</h2>
           <Separator className="my-3" />
           <dl className="grid grid-cols-2 gap-4 text-sm">
+            {payment.receipt_number != null && (
+              <div>
+                <dt className="text-gray-500">N° de recibo</dt>
+                <dd className="mt-0.5 font-mono font-medium text-gray-900">{formatReceiptNumber(payment.receipt_number)}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-gray-500">Monto pagado</dt>
               <dd className="mt-0.5 font-medium text-gray-900">{formatCurrency(payment.amount_paid, currency)}</dd>

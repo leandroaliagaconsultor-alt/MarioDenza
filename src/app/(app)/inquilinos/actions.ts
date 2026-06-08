@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 
 export async function getTenants(search?: string) {
   const supabase = await createClient();
-  let query = supabase.from("tenants").select("*").order("full_name");
+  let query = supabase.from("tenants").select("*").is("deleted_at", null).order("full_name");
 
   if (search) {
     query = query.or(`full_name.ilike.%${search}%,dni.ilike.%${search}%,email.ilike.%${search}%`);
@@ -60,10 +60,19 @@ export async function updateTenant(id: string, values: TenantFormValues) {
 
 export async function getTenantContracts(tenantId: string) {
   const supabase = await createClient();
+
+  // Contratos donde participa como principal o co-inquilino (vía contract_tenants)
+  const { data: links } = await supabase
+    .from("contract_tenants")
+    .select("contract_id")
+    .eq("tenant_id", tenantId);
+  const ids = (links ?? []).map((l) => l.contract_id);
+  if (ids.length === 0) return [];
+
   const { data, error } = await supabase
     .from("contracts")
     .select("id, start_date, end_date, current_rent, currency, status, property:properties(id, address, unit, owner:owners(full_name))")
-    .eq("tenant_id", tenantId)
+    .in("id", ids)
     .order("start_date", { ascending: false });
   if (error) throw error;
   return data;
@@ -71,12 +80,21 @@ export async function getTenantContracts(tenantId: string) {
 
 export async function deleteTenant(id: string) {
   const supabase = await createClient();
-  const { error } = await supabase.from("tenants").delete().eq("id", id);
-  if (error) {
-    if (error.code === "23503") {
-      throw new Error("No se puede eliminar: tiene contratos asociados");
-    }
-    throw error;
+
+  // No archivar si tiene contratos (quedarían colgando de una contraparte oculta)
+  const { count } = await supabase
+    .from("contracts")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", id);
+  if (count && count > 0) {
+    throw new Error("No se puede eliminar: tiene contratos asociados");
   }
+
+  // Soft-delete: nunca se pierde el registro
+  const { error } = await supabase
+    .from("tenants")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
   revalidatePath("/inquilinos");
 }

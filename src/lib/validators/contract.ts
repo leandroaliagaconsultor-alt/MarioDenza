@@ -4,8 +4,9 @@ export const contractFormSchema = z.object({
   // Step 1: Property
   property_id: z.string().uuid("Selecciona una propiedad"),
 
-  // Step 2: Tenant
+  // Step 2: Tenant (principal) + co-inquilinos opcionales
   tenant_id: z.string().uuid("Selecciona un inquilino"),
+  co_tenant_ids: z.array(z.string().uuid()),
 
   // Step 3: Economic data
   start_date: z.string().min(1, "La fecha de inicio es obligatoria"),
@@ -38,6 +39,7 @@ export type ContractFormValues = z.infer<typeof contractFormSchema>;
 export const contractDefaults: ContractFormValues = {
   property_id: "",
   tenant_id: "",
+  co_tenant_ids: [],
   start_date: "",
   end_date: "",
   currency: "ARS",

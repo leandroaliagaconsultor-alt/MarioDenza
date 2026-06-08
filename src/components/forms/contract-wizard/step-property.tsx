@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Building2, Check, Plus, Loader2, Sparkles, User } from "lucide-react";
 import { toast } from "sonner";
-import { createOwnerInline, createPropertyInline, getAllOwners } from "@/app/(app)/contratos/actions";
+import { createOwnerInline, createPropertyInline, getAllOwners, findOwnerMatches } from "@/app/(app)/contratos/actions";
 
 interface Props {
   properties: PropertyOption[];
@@ -27,6 +27,7 @@ export function StepProperty({ properties, ocrData, onPropertyCreated }: Props) 
   const [creating, setCreating] = useState(false);
   const [owners, setOwners] = useState<{ id: string; full_name: string }[] | null>(null);
   const [showNewOwner, setShowNewOwner] = useState(false);
+  const [ownerMatches, setOwnerMatches] = useState<{ id: string; full_name: string; dni_cuit: string | null }[]>([]);
 
   // New property form
   const [newAddress, setNewAddress] = useState(ocrData?.property_address ?? "");
@@ -43,11 +44,34 @@ export function StepProperty({ properties, ocrData, onPropertyCreated }: Props) 
   const available = properties.filter((p) => p.status === "disponible" || p.status === "en_mantenimiento");
   const occupied = properties.filter((p) => p.status === "ocupada");
 
+  // Anti-duplicado por dirección (match local mientras se escribe)
+  const addrQuery = newAddress.trim().toLowerCase();
+  const propMatches = showCreate && addrQuery.length >= 4
+    ? properties
+        .filter((p) => {
+          const a = p.address.toLowerCase();
+          return a.includes(addrQuery) || addrQuery.includes(a);
+        })
+        .slice(0, 4)
+    : [];
+
   async function handleOpenCreate() {
     setShowCreate(true);
     if (!owners) {
       const data = await getAllOwners();
       setOwners(data);
+    }
+    // Sugerir propietario existente si el OCR detectó nombre/DNI
+    if ((ocrData?.owner_name || ocrData?.owner_dni) && ownerMatches.length === 0) {
+      try {
+        const matches = await findOwnerMatches(
+          ocrData?.owner_name ?? undefined,
+          ocrData?.owner_dni ?? undefined
+        );
+        setOwnerMatches(matches);
+      } catch {
+        // si falla la búsqueda, simplemente no sugerimos
+      }
     }
   }
 
@@ -145,6 +169,40 @@ export function StepProperty({ properties, ocrData, onPropertyCreated }: Props) 
             </div>
           </div>
 
+          {/* Anti-duplicado: la dirección podría ya existir */}
+          {propMatches.length > 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+              <div className="flex items-center gap-1.5 font-medium text-amber-700">
+                <Sparkles className="h-4 w-4" /> Esta dirección podría ya existir:
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {propMatches.map((p) => {
+                  const occupiedProp = p.status === "ocupada";
+                  return (
+                    <div key={p.id} className="flex items-center justify-between gap-2">
+                      <span className="text-amber-800">
+                        {p.address}{p.unit ? ` - ${p.unit}` : ""}{p.owner ? ` · ${p.owner.full_name}` : ""}
+                      </span>
+                      {occupiedProp ? (
+                        <span className="text-xs text-amber-600">ocupada</span>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="border-amber-300 text-amber-800 hover:bg-amber-100"
+                          onClick={() => { setValue("property_id", p.id, { shouldValidate: true }); setShowCreate(false); }}
+                        >
+                          Usar esta
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Owner selection */}
           <div>
             <div className="flex items-center justify-between">
@@ -153,6 +211,34 @@ export function StepProperty({ properties, ocrData, onPropertyCreated }: Props) 
                 <User className="mr-1 h-3.5 w-3.5" /> {showNewOwner ? "Seleccionar existente" : "Crear nuevo"}
               </Button>
             </div>
+
+            {/* Sugerencia: el propietario del OCR podría ya existir */}
+            {ownerMatches.length > 0 && !selectedOwnerId && !showNewOwner && (
+              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+                <div className="flex items-center gap-1.5 font-medium text-amber-700">
+                  <Sparkles className="h-4 w-4" /> Este propietario podría ya existir:
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  {ownerMatches.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between gap-2">
+                      <span className="text-amber-800">
+                        {m.full_name}{m.dni_cuit ? ` · ${m.dni_cuit}` : ""}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-300 text-amber-800 hover:bg-amber-100"
+                        onClick={() => { setSelectedOwnerId(m.id); setShowNewOwner(false); }}
+                      >
+                        Usar este
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-amber-600">O creá uno nuevo si no es ninguno de estos.</p>
+              </div>
+            )}
 
             {showNewOwner ? (
               <div className="mt-2 rounded-md border border-gray-200 bg-white p-3 space-y-3">

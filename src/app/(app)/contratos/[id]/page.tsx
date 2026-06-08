@@ -39,8 +39,24 @@ export default async function ContratoDetailPage({ params }: Props) {
   const owner = Array.isArray(ownerData) ? ownerData[0] : ownerData;
   const tenantRaw = contract.tenant;
   const tenant = (Array.isArray(tenantRaw) ? tenantRaw[0] : tenantRaw) as { id: string; full_name: string; phone?: string; email?: string } | null;
+
+  type ContractTenant = { is_primary: boolean; tenant: { id: string; full_name: string; phone?: string; email?: string } };
+  const ctRaw = (contract.contract_tenants as { is_primary: boolean; tenant: unknown }[]) ?? [];
+  const contractTenants: ContractTenant[] = ctRaw
+    .map((ct) => ({
+      is_primary: ct.is_primary,
+      tenant: (Array.isArray(ct.tenant) ? ct.tenant[0] : ct.tenant) as ContractTenant["tenant"] | null,
+    }))
+    .filter((ct): ct is ContractTenant => ct.tenant != null)
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
+  // Fallback legacy (contratos sin filas en contract_tenants)
+  if (contractTenants.length === 0 && tenant) {
+    contractTenants.push({ is_primary: true, tenant });
+  }
   const adjConfig = (contract.contract_adjustments as { index_type: string; frequency_months: number; next_adjustment_date: string; fixed_percentage?: number }[])?.[0];
   const currency = contract.currency as CurrencyType;
+  const today = Date.now();
+  const DAY_MS = 1000 * 60 * 60 * 24;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -124,20 +140,29 @@ export default async function ContratoDetailPage({ params }: Props) {
         </div>
         <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-            <UserCheck className="h-4 w-4 text-gray-400" /> Inquilino
+            <UserCheck className="h-4 w-4 text-gray-400" /> {contractTenants.length > 1 ? "Inquilinos" : "Inquilino"}
           </h2>
           <Separator className="my-3" />
-          {tenant && (
-            <div>
-              <Link href={`/inquilinos/${tenant.id}`} className="font-medium text-gray-900 hover:text-teal-600">
-                {tenant.full_name}
-              </Link>
-              <div className="mt-1 flex gap-3 text-sm text-gray-500">
-                {tenant.phone && <span>{tenant.phone}</span>}
-                {tenant.email && <span>{tenant.email}</span>}
+          <div className="space-y-3">
+            {contractTenants.map((ct) => (
+              <div key={ct.tenant.id}>
+                <div className="flex items-center gap-2">
+                  <Link href={`/inquilinos/${ct.tenant.id}`} className="font-medium text-gray-900 hover:text-teal-600">
+                    {ct.tenant.full_name}
+                  </Link>
+                  {ct.is_primary && contractTenants.length > 1 && (
+                    <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-medium uppercase text-teal-700">Principal</span>
+                  )}
+                </div>
+                {(ct.tenant.phone || ct.tenant.email) && (
+                  <div className="mt-0.5 flex gap-3 text-sm text-gray-500">
+                    {ct.tenant.phone && <span>{ct.tenant.phone}</span>}
+                    {ct.tenant.email && <span>{ct.tenant.email}</span>}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -220,6 +245,7 @@ export default async function ContratoDetailPage({ params }: Props) {
           currency={currency}
           endDate={contract.end_date}
           contractStatus={contract.status}
+          adjustmentNextDate={adjConfig?.next_adjustment_date}
         />
       )}
 
@@ -239,25 +265,42 @@ export default async function ContratoDetailPage({ params }: Props) {
                   <th className="pb-2 pr-4">Periodo</th>
                   <th className="pb-2 pr-4">Monto</th>
                   <th className="pb-2 pr-4">Pagado</th>
-                  <th className="pb-2">Estado</th>
+                  <th className="pb-2 pr-4">Estado</th>
+                  <th className="pb-2">Atraso</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {payments.map((p) => (
+                {payments.map((p) => {
+                  const isPaid = p.status === "pagado";
+                  const due = new Date(p.due_date).getTime();
+                  const overdueDays = !isPaid && due < today ? Math.floor((today - due) / DAY_MS) : 0;
+                  return (
                   <tr key={p.id}>
-                    <td className="py-2 pr-4 text-gray-900">{formatDate(p.period)}</td>
+                    <td className="py-2 pr-4">
+                      <Link href={`/pagos/${p.id}`} className="text-gray-900 hover:text-teal-600">
+                        {formatDate(p.period)}
+                      </Link>
+                    </td>
                     <td className="py-2 pr-4 text-gray-900">{formatCurrency(p.amount_due, currency)}</td>
                     <td className="py-2 pr-4 text-gray-600">
                       {p.paid_date ? formatDate(p.paid_date) : "—"}
                     </td>
-                    <td className="py-2">
+                    <td className="py-2 pr-4">
                       <StatusBadge
                         label={PAYMENT_STATUSES[p.status as PaymentStatus]}
                         colorClass={PAYMENT_STATUS_COLORS[p.status as PaymentStatus]}
                       />
                     </td>
+                    <td className="py-2">
+                      {overdueDays > 0 ? (
+                        <span className="font-medium text-red-600">{overdueDays} día{overdueDays > 1 ? "s" : ""}</span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

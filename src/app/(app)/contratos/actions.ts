@@ -48,6 +48,7 @@ export async function getContractById(id: string) {
       *,
       property:properties(*, owner:owners(*)),
       tenant:tenants(*),
+      contract_tenants(is_primary, tenant:tenants(id, full_name, phone, email)),
       contract_adjustments(*)
     `)
     .eq("id", id)
@@ -112,6 +113,19 @@ export async function createContract(values: ContractFormValues & { retroactive_
     .single();
 
   if (contractError) throw contractError;
+
+  // Inquilinos del contrato: principal (is_primary) + co-inquilinos
+  const coTenantIds = (parsed.co_tenant_ids ?? []).filter((tid) => tid !== parsed.tenant_id);
+  const tenantRows = [
+    { contract_id: contract.id, tenant_id: parsed.tenant_id, is_primary: true },
+    ...[...new Set(coTenantIds)].map((tid) => ({
+      contract_id: contract.id,
+      tenant_id: tid,
+      is_primary: false,
+    })),
+  ];
+  const { error: tenantsError } = await supabase.from("contract_tenants").insert(tenantRows);
+  if (tenantsError) throw tenantsError;
 
   // If renewal, finalize the previous contract
   if (values.renew_from) {
@@ -240,6 +254,7 @@ export async function getAvailableProperties() {
     .from("properties")
     .select("id, address, unit, owner:owners(full_name)")
     .in("status", ["disponible", "en_mantenimiento"])
+    .is("deleted_at", null)
     .order("address");
   if (error) throw error;
   return data;
@@ -250,6 +265,7 @@ export async function getAllProperties() {
   const { data, error } = await supabase
     .from("properties")
     .select("id, address, unit, status, owner:owners(full_name)")
+    .is("deleted_at", null)
     .order("address");
   if (error) throw error;
   return data;
@@ -260,6 +276,7 @@ export async function getAllTenants() {
   const { data, error } = await supabase
     .from("tenants")
     .select("id, full_name, dni")
+    .is("deleted_at", null)
     .order("full_name");
   if (error) throw error;
   return data;
@@ -340,9 +357,33 @@ export async function getAllOwners() {
   const { data, error } = await supabase
     .from("owners")
     .select("id, full_name")
+    .is("deleted_at", null)
     .order("full_name");
   if (error) throw error;
   return data;
+}
+
+/** Busca propietarios que podrían ser el mismo (por DNI/CUIT exacto o nombre parecido). */
+export async function findOwnerMatches(
+  name?: string,
+  dni?: string
+): Promise<{ id: string; full_name: string; dni_cuit: string | null }[]> {
+  const supabase = await createClient();
+  const filters: string[] = [];
+  const cleanDni = dni?.replace(/[^\w]/g, "").trim();
+  const cleanName = name?.replace(/,/g, " ").trim();
+  if (cleanDni) filters.push(`dni_cuit.ilike.%${cleanDni}%`);
+  if (cleanName) filters.push(`full_name.ilike.%${cleanName}%`);
+  if (filters.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("owners")
+    .select("id, full_name, dni_cuit")
+    .is("deleted_at", null)
+    .or(filters.join(","))
+    .limit(5);
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function calculateRetroactive(
@@ -384,7 +425,7 @@ export async function getContractPayments(contractId: string) {
     .from("payments")
     .select("*")
     .eq("contract_id", contractId)
-    .order("period", { ascending: false });
+    .order("period", { ascending: true });
   if (error) throw error;
   return data;
 }

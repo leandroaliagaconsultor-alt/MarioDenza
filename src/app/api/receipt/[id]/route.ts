@@ -4,6 +4,9 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { ReceiptDocument } from "@/lib/pdf/receipt-template";
 import { PAYMENT_METHODS } from "@/lib/types/enums";
 import type { PaymentMethod } from "@/lib/types/enums";
+import { formatReceiptNumber, formatCurrency, formatDate } from "@/lib/utils/format";
+import { loadLogoDataUri } from "@/lib/pdf/logo";
+import type { CurrencyType } from "@/lib/types/enums";
 import React from "react";
 
 export async function GET(
@@ -44,9 +47,21 @@ export async function GET(
   const ownerData = contract?.property?.owner;
   const owner = Array.isArray(ownerData) ? ownerData[0] : ownerData;
 
+  // Correlativo: asignar de forma diferida si el pago aún no tiene número
+  // (cubre pagos cobrados antes de esta migración). Idempotente.
+  let receiptNumber = payment.receipt_number as number | null;
+  if (receiptNumber == null) {
+    const { data: assigned } = await supabase.rpc("assign_receipt_number", { p_payment_id: id });
+    receiptNumber = (assigned as number | null) ?? null;
+  }
+
+  const currency = (contract?.currency ?? "ARS") as CurrencyType;
+  const logo = await loadLogoDataUri(request.nextUrl.origin);
+
   const data = {
-    receiptNumber: id.substring(0, 8).toUpperCase(),
-    date: payment.paid_date || new Date().toISOString().split("T")[0],
+    logo,
+    receiptNumber: formatReceiptNumber(receiptNumber),
+    date: formatDate(payment.paid_date || new Date().toISOString().split("T")[0]),
     property: {
       address: contract?.property?.address ?? "",
       unit: contract?.property?.unit,
@@ -59,16 +74,13 @@ export async function GET(
       full_name: owner?.full_name ?? "",
     },
     period: payment.period.substring(0, 7),
-    amountDue: String(payment.amount_due),
-    amountPaid: String(payment.amount_paid),
-    discount: String(payment.discount_amount),
-    lateFee: String(payment.late_fee_amount),
-    commission: String(payment.commission_amount),
-    ownerPayout: String(payment.owner_payout),
+    amountDue: formatCurrency(payment.amount_due, currency),
+    amountPaid: formatCurrency(payment.amount_paid, currency),
+    discount: payment.discount_amount > 0 ? formatCurrency(payment.discount_amount, currency) : null,
+    lateFee: payment.late_fee_amount > 0 ? formatCurrency(payment.late_fee_amount, currency) : null,
     paymentMethod: payment.payment_method
       ? PAYMENT_METHODS[payment.payment_method as PaymentMethod]
       : "—",
-    currency: contract?.currency ?? "ARS",
   };
 
   const buffer = await renderToBuffer(

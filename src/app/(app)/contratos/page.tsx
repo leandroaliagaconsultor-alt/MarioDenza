@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Plus, Eye } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { getContracts } from "./actions";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
@@ -55,11 +55,10 @@ export default async function ContratosPage({ searchParams }: Props) {
               <thead>
                 <tr className="border-b border-gray-100 text-xs font-medium uppercase tracking-wider text-gray-500">
                   <th className="px-6 py-3">Propiedad</th>
-                  <th className="px-6 py-3">Inquilino</th>
+                  <th className="hidden px-6 py-3 md:table-cell">Inquilino</th>
                   <th className="px-6 py-3">Alquiler</th>
-                  <th className="px-6 py-3">Periodo</th>
+                  <th className="hidden px-6 py-3 lg:table-cell">Periodo</th>
                   <th className="px-6 py-3">Estado</th>
-                  <th className="px-6 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -67,24 +66,21 @@ export default async function ContratosPage({ searchParams }: Props) {
                   const prop = c.property as { id: string; address: string; unit?: string } | null;
                   const ten = c.tenant as { id: string; full_name: string } | null;
                   return (
-                    <tr key={c.id} className="transition-colors hover:bg-gray-50/50">
+                    <tr key={c.id} className="relative transition-colors hover:bg-gray-50/50">
                       <td className="px-6 py-4">
-                        <Link href={`/contratos/${c.id}`} className="font-medium text-gray-900 hover:text-teal-600">
+                        <Link href={`/contratos/${c.id}`} className="font-medium text-gray-900 after:absolute after:inset-0 hover:text-teal-600">
                           {prop?.address}{prop?.unit ? ` - ${prop.unit}` : ""}
                         </Link>
                       </td>
-                      <td className="px-6 py-4 text-gray-600">{ten?.full_name ?? "—"}</td>
+                      <td className="hidden px-6 py-4 text-gray-600 md:table-cell">{ten?.full_name ?? "—"}</td>
                       <td className="px-6 py-4 font-medium text-gray-900">
                         {formatCurrency(c.current_rent, c.currency as CurrencyType)}
                       </td>
-                      <td className="px-6 py-4 text-gray-500 text-xs">
+                      <td className="hidden px-6 py-4 text-gray-500 text-xs lg:table-cell">
                         {formatDate(c.start_date)} — {formatDate(c.end_date)}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge label={CONTRACT_STATUSES[c.status as ContractStatus]} colorClass={CONTRACT_STATUS_COLORS[c.status as ContractStatus]} />
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Link href={`/contratos/${c.id}`}><Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button></Link>
                       </td>
                     </tr>
                   );

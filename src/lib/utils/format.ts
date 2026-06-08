@@ -23,6 +23,11 @@ export function formatDateLong(date: string | Date): string {
   return format(d, "d 'de' MMMM 'de' yyyy", { locale: es });
 }
 
+export function formatReceiptNumber(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "—";
+  return String(n).padStart(8, "0");
+}
+
 export function formatPhone(phone: string): string {
   // Remove non-digits
   const digits = phone.replace(/\D/g, "");

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Plus, Eye, Pencil } from "lucide-react";
+import { Building2, Plus, Pencil } from "lucide-react";
 import { getProperties } from "./actions";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
@@ -55,8 +55,8 @@ export default async function PropiedadesPage({ searchParams }: Props) {
               <thead>
                 <tr className="border-b border-gray-100 text-xs font-medium uppercase tracking-wider text-gray-500">
                   <th className="px-6 py-3">Direccion</th>
-                  <th className="px-6 py-3">Tipo</th>
-                  <th className="px-6 py-3">Propietario</th>
+                  <th className="hidden px-6 py-3 md:table-cell">Tipo</th>
+                  <th className="hidden px-6 py-3 sm:table-cell">Propietario</th>
                   <th className="px-6 py-3">Estado</th>
                   <th className="px-6 py-3 text-right">Acciones</th>
                 </tr>
@@ -65,25 +65,25 @@ export default async function PropiedadesPage({ searchParams }: Props) {
                 {properties.map((p) => {
                   const owner = p.owner as { id: string; full_name: string } | null;
                   return (
-                    <tr key={p.id} className="transition-colors hover:bg-gray-50/50">
+                    <tr key={p.id} className="relative transition-colors hover:bg-gray-50/50">
                       <td className="px-6 py-4">
-                        <Link href={`/propiedades/${p.id}`} className="font-medium text-gray-900 hover:text-teal-600">
+                        {/* Link estirado: hace clickeable toda la fila (after:inset-0) */}
+                        <Link href={`/propiedades/${p.id}`} className="font-medium text-gray-900 after:absolute after:inset-0 hover:text-teal-600">
                           {p.address}{p.unit ? ` - ${p.unit}` : ""}
                         </Link>
                         {p.city && <p className="text-xs text-gray-400">{p.city}, {p.province}</p>}
                       </td>
-                      <td className="px-6 py-4 text-gray-500">{PROPERTY_TYPES[p.type as PropertyType]}</td>
-                      <td className="px-6 py-4">
+                      <td className="hidden px-6 py-4 text-gray-500 md:table-cell">{PROPERTY_TYPES[p.type as PropertyType]}</td>
+                      <td className="hidden px-6 py-4 sm:table-cell">
                         {owner ? (
-                          <Link href={`/duenos/${owner.id}`} className="text-gray-600 hover:text-teal-600">{owner.full_name}</Link>
+                          <Link href={`/duenos/${owner.id}`} className="relative z-10 text-gray-600 hover:text-teal-600">{owner.full_name}</Link>
                         ) : "—"}
                       </td>
                       <td className="px-6 py-4">
                         <StatusBadge label={PROPERTY_STATUSES[p.status as PropertyStatus]} colorClass={PROPERTY_STATUS_COLORS[p.status as PropertyStatus]} />
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Link href={`/propiedades/${p.id}`}><Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button></Link>
+                        <div className="relative z-10 flex items-center justify-end gap-1">
                           <Link href={`/propiedades/${p.id}/editar`}><Button variant="ghost" size="sm"><Pencil className="h-4 w-4" /></Button></Link>
                           <PropiedadesDeleteButton id={p.id} address={`${p.address}${p.unit ? ` - ${p.unit}` : ""}`} />
                         </div>

@@ -46,6 +46,7 @@ export async function getOccupancyReport() {
   const { data, error } = await supabase
     .from("properties")
     .select("address, unit, city, type, status, owner:owners(full_name)")
+    .is("deleted_at", null)
     .order("status")
     .order("address");
   if (error) throw error;
