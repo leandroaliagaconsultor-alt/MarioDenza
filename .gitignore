@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# datos del cliente (no versionar ni servir público) — son archivos de importación con datos personales
+/public/*.xlsx
+/public/*.xls
+/public/*.csv
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

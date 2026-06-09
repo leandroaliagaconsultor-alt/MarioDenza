@@ -8,7 +8,7 @@ export default async function IndicesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Indices ICL / IPC"
+        title="Indices ICL / IPC / Casa Propia"
         description="Carga y consulta los valores de indices para calcular aumentos"
         backHref="/configuracion"
       />

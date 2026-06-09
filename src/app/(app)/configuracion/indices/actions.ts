@@ -8,15 +8,16 @@ import { scrapeBcraIcl } from "@/lib/indices/bcra-scraper";
 export async function getIndexValues() {
   const supabase = await createClient();
 
-  const [{ data: ipcData }, { data: iclData }] = await Promise.all([
+  const [{ data: ipcData }, { data: iclData }, { data: casaData }] = await Promise.all([
     supabase.from("index_cache").select("*").eq("index_type", "IPC").order("period", { ascending: false }).limit(12),
     supabase.from("index_cache").select("*").eq("index_type", "ICL").order("period", { ascending: false }).limit(12),
+    supabase.from("index_cache").select("*").eq("index_type", "casa_propia").order("period", { ascending: false }).limit(12),
   ]);
 
-  return [...(ipcData || []), ...(iclData || [])];
+  return [...(ipcData || []), ...(iclData || []), ...(casaData || [])];
 }
 
-export async function saveIndexValue(indexType: "ICL" | "IPC", period: string, value: number) {
+export async function saveIndexValue(indexType: "ICL" | "IPC" | "casa_propia", period: string, value: number) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("index_cache")
@@ -38,6 +39,44 @@ export async function deleteIndexValue(id: string) {
   const { error } = await supabase.from("index_cache").delete().eq("id", id);
   if (error) throw error;
   revalidatePath("/configuracion/indices");
+}
+
+export interface BulkIndexRow {
+  period: string; // "YYYY-MM"
+  icl: number | null;
+  ipc: number | null;
+  casa_propia: number | null;
+}
+
+/** Carga masiva de indices (ICL / IPC / Casa Propia) en una sola pasada. Hace upsert por (tipo, periodo). */
+export async function bulkSaveIndices(rows: BulkIndexRow[]): Promise<{ saved: number }> {
+  const supabase = await createClient();
+  const fetched_at = new Date().toISOString();
+
+  // Una fila de index_cache por cada valor presente; dedup por (tipo, periodo) para no chocar el ON CONFLICT.
+  const byKey = new Map<string, { index_type: string; period: string; value: number; fetched_at: string }>();
+  for (const r of rows) {
+    if (!/^\d{4}-\d{2}$/.test(r.period)) continue;
+    const period = r.period + "-01";
+    const add = (index_type: string, value: number | null) => {
+      if (value == null || !Number.isFinite(value) || value <= 0) return;
+      byKey.set(`${index_type}|${period}`, { index_type, period, value, fetched_at });
+    };
+    add("ICL", r.icl);
+    add("IPC", r.ipc);
+    add("casa_propia", r.casa_propia);
+  }
+
+  const records = [...byKey.values()];
+  if (records.length === 0) return { saved: 0 };
+
+  const { error } = await supabase
+    .from("index_cache")
+    .upsert(records, { onConflict: "index_type,period" });
+  if (error) throw error;
+
+  revalidatePath("/configuracion/indices");
+  return { saved: records.length };
 }
 
 export async function syncFromIndec() {

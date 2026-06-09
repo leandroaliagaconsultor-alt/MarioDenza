@@ -62,13 +62,6 @@ export default async function AumentosPage() {
                 </summary>
 
                 <div className="space-y-4 border-t border-gray-100 px-5 py-4">
-                  {a.indexType !== "IPC" && (
-                    <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                      Este contrato ajusta por <span className="font-medium">{indexLabel}</span>, pero el cálculo automático
-                      es por IPC. Para {indexLabel} usá el monto manual al aplicar.
-                    </p>
-                  )}
-
                   <AdjustmentPanel contractId={a.contractId} currency={currency} currentRent={a.currentRent} />
 
                   <div className="flex flex-wrap items-center gap-2">

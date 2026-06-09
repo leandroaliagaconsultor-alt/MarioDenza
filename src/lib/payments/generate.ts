@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { calculateCommission } from "./commission";
 
 /**
  * Generates pending payments for all active contracts for a given month.
@@ -12,7 +13,7 @@ export async function generateMonthlyPayments(
   // Get all active contracts
   const { data: contracts, error: contractsErr } = await supabase
     .from("contracts")
-    .select("id, current_rent, payment_day")
+    .select("id, current_rent, payment_day, commission_percentage, agency_collects")
     .eq("status", "activo");
 
   if (contractsErr) throw contractsErr;
@@ -36,6 +37,16 @@ export async function generateMonthlyPayments(
       const day = Math.min(c.payment_day, lastDay);
       const due_date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
+      // Comisión y pago al dueño PROYECTADOS sobre el monto a cobrar.
+      // Al cobrar se recalculan sobre el monto realmente pagado (descuentos/recargos).
+      const { commission_amount, owner_payout } = calculateCommission({
+        amount_paid: c.current_rent,
+        discount_amount: 0,
+        late_fee_amount: 0,
+        commission_percentage: c.commission_percentage ?? 0,
+        agency_collects: c.agency_collects ?? true,
+      });
+
       return {
         contract_id: c.id,
         period,
@@ -44,8 +55,8 @@ export async function generateMonthlyPayments(
         amount_paid: 0,
         discount_amount: 0,
         late_fee_amount: 0,
-        commission_amount: 0,
-        owner_payout: 0,
+        commission_amount,
+        owner_payout,
         status: "pendiente" as const,
       };
     });

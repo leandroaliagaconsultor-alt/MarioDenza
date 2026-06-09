@@ -6,7 +6,7 @@ import { getDashboardStats } from "./actions";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { INDEX_TYPES } from "@/lib/types/enums";
+import { INDEX_TYPES, type CurrencyType } from "@/lib/types/enums";
 import { DashboardWhatsApp } from "./dashboard-whatsapp";
 import { OccupancyChart } from "@/components/widgets/occupancy-chart";
 import { CommissionChart } from "@/components/widgets/commission-chart";
@@ -141,34 +141,29 @@ export default async function DashboardPage() {
         {/* Pending adjustments */}
         <div className="rounded-xl border border-teal-200 bg-teal-50/30 p-6 shadow-sm lg:col-span-2">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <TrendingUp className="h-5 w-5 text-teal-600" /> Aumentos proximos (30 dias)
+            <TrendingUp className="h-5 w-5 text-teal-600" /> Aumentos a ajustar
           </h2>
           <Separator className="my-3" />
           {stats.pendingAdjustments.length === 0 ? (
-            <p className="py-4 text-center text-sm text-gray-400">No hay aumentos programados para los proximos 30 dias</p>
+            <p className="py-4 text-center text-sm text-gray-400">No hay aumentos pendientes de ajustar</p>
           ) : (
             <div className="space-y-3">
-              {stats.pendingAdjustments.map((a: any) => {
-                const contract = Array.isArray(a.contract) ? a.contract[0] : a.contract;
-                const prop = Array.isArray(contract?.property) ? contract.property[0] : contract?.property;
-                const ten = Array.isArray(contract?.tenant) ? contract.tenant[0] : contract?.tenant;
-                const indexLabel = INDEX_TYPES[a.index_type as keyof typeof INDEX_TYPES] ?? a.index_type;
+              {stats.pendingAdjustments.map((a) => {
+                const indexLabel = INDEX_TYPES[a.indexType as keyof typeof INDEX_TYPES] ?? a.indexType;
                 return (
-                  <div key={a.id} className="flex items-center justify-between rounded-lg border border-teal-100 bg-white p-4">
+                  <div key={a.contractId} className="flex items-center justify-between rounded-lg border border-teal-100 bg-white p-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {prop?.address}{prop?.unit ? ` - ${prop.unit}` : ""}
-                      </p>
+                      <p className="text-sm font-medium text-gray-900">{a.propertyAddress}</p>
                       <p className="text-xs text-gray-500">
-                        {ten?.full_name} — {indexLabel} cada {a.frequency_months}m — Actual: {formatCurrency(contract?.current_rent ?? 0, contract?.currency ?? "ARS")}
+                        {a.tenantName ?? "—"} — {indexLabel} cada {a.frequencyMonths}m — Actual: {formatCurrency(a.currentRent, a.currency as CurrencyType)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-right">
-                        <p className="text-sm font-medium text-teal-700">{formatDate(a.next_adjustment_date)}</p>
+                        <p className="text-sm font-medium text-teal-700">{formatDate(a.nextDate)}</p>
                         <p className="text-xs text-teal-600">Proximo aumento</p>
                       </div>
-                      <Link href={`/contratos/${a.contract_id}`}>
+                      <Link href={`/contratos/${a.contractId}`}>
                         <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
                           Aplicar
                         </Button>

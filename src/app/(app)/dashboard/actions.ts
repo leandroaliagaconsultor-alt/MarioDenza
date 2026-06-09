@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getUpcomingAdjustments, getUpcomingAdjustmentsCount } from "../aumentos/actions";
 
 export async function getDashboardStats() {
   const supabase = await createClient();
@@ -17,7 +18,7 @@ export async function getDashboardStats() {
     { data: expiringContracts },
     { data: overduePayments },
     { data: monthCommissions },
-    { data: pendingAdjustments },
+    pendingAdjustments,
     { data: commissionHistory },
   ] = await Promise.all([
     supabase.from("properties").select("*", { count: "exact", head: true }).is("deleted_at", null),
@@ -38,10 +39,8 @@ export async function getDashboardStats() {
       .select("commission_amount")
       .eq("status", "pagado")
       .gte("period", new Date().toISOString().substring(0, 7) + "-01"),
-    supabase.from("contract_adjustments")
-      .select("id, next_adjustment_date, index_type, frequency_months, contract_id, contract:contracts(property:properties(address, unit), tenant:tenants(full_name, phone), current_rent, currency)")
-      .lte("next_adjustment_date", new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
-      .order("next_adjustment_date"),
+    // Mismos "pendientes" que la sección Aumentos / badge / banner (regla de 15 días)
+    getUpcomingAdjustments().catch(() => []),
     supabase.from("payments")
       .select("period, commission_amount")
       .eq("status", "pagado")
@@ -81,9 +80,6 @@ export async function getDashboardStats() {
 export async function getNotifications() {
   const supabase = await createClient();
 
-  const today = new Date().toISOString().split("T")[0];
-  const in30days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-
   // Overdue payments count
   const { count: overdueCount } = await supabase
     .from("payments")
@@ -97,16 +93,13 @@ export async function getNotifications() {
     .in("status", ["activo", "por_vencer"])
     .lte("end_date", new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
 
-  // Pending adjustments count
-  const { count: adjustmentCount } = await supabase
-    .from("contract_adjustments")
-    .select("*", { count: "exact", head: true })
-    .lte("next_adjustment_date", in30days);
+  // Pending adjustments: misma regla de 15 días que el resto de la app
+  const adjustmentCount = await getUpcomingAdjustmentsCount().catch(() => 0);
 
   return {
     overdueCount: overdueCount ?? 0,
     expiringCount: expiringCount ?? 0,
-    adjustmentCount: adjustmentCount ?? 0,
-    total: (overdueCount ?? 0) + (expiringCount ?? 0) + (adjustmentCount ?? 0),
+    adjustmentCount,
+    total: (overdueCount ?? 0) + (expiringCount ?? 0) + adjustmentCount,
   };
 }

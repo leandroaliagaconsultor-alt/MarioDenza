@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, TrendingUp, AlertCircle, Check, PenLine } from "lucide-react";
+import { Loader2, TrendingUp, AlertCircle, Check, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { calculatePendingAdjustment, applyAdjustment } from "./adjustment-actions";
+import { calculatePendingAdjustment, applyAdjustment, type AdjustmentCalcResult } from "./adjustment-actions";
 import { formatCurrency } from "@/lib/utils/format";
+import { formatPeriodShort } from "@/lib/indices/manual-adjustment";
+import { INDEX_TYPES } from "@/lib/types/enums";
 import type { CurrencyType } from "@/lib/types/enums";
-import type { AdjustmentCalculation } from "@/lib/indices/ipc-calculator";
 
 interface Props {
   contractId: string;
@@ -21,213 +23,219 @@ interface Props {
 }
 
 export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
-  const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
-  const [calc, setCalc] = useState<AdjustmentCalculation | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [useOverride, setUseOverride] = useState(false);
-  const [overrideRent, setOverrideRent] = useState<number>(0);
-  const [overrideReason, setOverrideReason] = useState("");
+  const [applying, setApplying] = useState(false);
+  const [result, setResult] = useState<AdjustmentCalcResult | null>(null);
+  const [finalRent, setFinalRent] = useState<string>("");
+  const [note, setNote] = useState("");
   const router = useRouter();
+
+  const indexLabel = (t: string) => INDEX_TYPES[t as keyof typeof INDEX_TYPES] ?? t;
 
   async function handleCalculate() {
     setCalculating(true);
-    setError(null);
     try {
-      const { data, error: calcError } = await calculatePendingAdjustment(contractId);
-      if (calcError) {
-        setError(calcError);
-      } else {
-        setCalc(data);
-      }
+      const res = await calculatePendingAdjustment(contractId);
+      setResult(res);
+      if (res.kind === "ok") setFinalRent(String(res.calc.suggestedNewRent));
+      else if (res.kind === "manual_only") setFinalRent("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al calcular");
+      setResult({ kind: "error", message: err instanceof Error ? err.message : "Error al calcular" });
     } finally {
       setCalculating(false);
     }
   }
 
   async function handleApply() {
-    if (!calc) return;
+    if (!result || (result.kind !== "ok" && result.kind !== "manual_only")) return;
+    const amount = Number(finalRent);
+    if (!amount || amount <= 0) { toast.error("Ingresá el nuevo monto del alquiler"); return; }
 
-    if (useOverride) {
-      if (!overrideRent || overrideRent <= 0) {
-        toast.error("Ingresa el monto del override");
-        return;
-      }
-      if (overrideReason.length < 10) {
-        toast.error("El motivo del override debe tener al menos 10 caracteres");
-        return;
-      }
-    }
-
-    setLoading(true);
+    const calc = result.kind === "ok" ? result.calc : null;
+    const indexType = result.kind === "ok" ? result.calc.indexType : result.indexType;
+    setApplying(true);
     try {
-      const { error: applyError } = await applyAdjustment(
-        contractId,
-        calc,
-        useOverride ? { finalRent: overrideRent, reason: overrideReason } : undefined
-      );
-      if (applyError) {
-        toast.error(applyError);
-      } else {
-        toast.success("Aumento aplicado correctamente");
-        setCalc(null);
-        router.refresh();
-      }
+      const { error } = await applyAdjustment(contractId, {
+        finalRent: amount,
+        indexType,
+        suggestedNewRent: calc?.suggestedNewRent ?? null,
+        coefficient: calc?.coefficient ?? null,
+        percentage: calc?.percentage ?? null,
+        fromPeriod: calc?.fromPeriod ?? null,
+        toPeriod: calc?.toPeriod ?? null,
+        monthsCovered: calc?.monthsCovered ?? null,
+        note,
+      });
+      if (error) { toast.error(error); return; }
+      toast.success("Aumento aplicado");
+      setResult(null);
+      setFinalRent("");
+      setNote("");
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al aplicar");
     } finally {
-      setLoading(false);
+      setApplying(false);
     }
   }
+
+  function reset() {
+    setResult(null);
+    setFinalRent("");
+    setNote("");
+  }
+
+  const calc = result?.kind === "ok" ? result.calc : null;
+  const resultIndexType =
+    result?.kind === "ok" ? result.calc.indexType : result?.kind === "manual_only" ? result.indexType : "";
+  const amount = Number(finalRent);
+  const overridden = calc != null && amount > 0 && amount !== calc.suggestedNewRent;
 
   return (
     <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-6 shadow-sm">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-        <TrendingUp className="h-4 w-4 text-teal-600" /> Aplicar aumento por IPC
+        <TrendingUp className="h-4 w-4 text-teal-600" /> Aumento sugerido por índice
       </h2>
       <Separator className="my-3" />
 
-      {!calc && !error ? (
+      {/* Estado inicial */}
+      {!result && (
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            Calcula el aumento usando el IPC publicado por el INDEC.
-            El sistema toma como punto de partida el IPC de llegada del ajuste anterior
-            (o la referencia inicial del contrato si es el primer ajuste).
+            Calcula el aumento sugerido componiendo los índices cargados (ICL / IPC / Casa Propia) de los
+            meses del ciclo. El monto final lo decidís vos antes de aplicar.
           </p>
           <Button onClick={handleCalculate} disabled={calculating} className="bg-teal-600 hover:bg-teal-700">
             {calculating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TrendingUp className="mr-2 h-4 w-4" />}
-            Calcular aumento
+            Calcular sugerido
           </Button>
         </div>
-      ) : error ? (
-        <div className="space-y-3">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="flex items-start gap-2 text-sm text-amber-700">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          </div>
-          <Button variant="outline" onClick={() => { setError(null); setCalc(null); }}>Volver</Button>
-        </div>
-      ) : calc ? (
-        <div className="space-y-5">
-          {/* Full breakdown */}
-          <div className="rounded-lg border border-green-200 bg-green-50 p-5">
-            <div className="flex items-center gap-2 text-sm font-medium text-green-700">
-              <Check className="h-4 w-4" /> Calculo obtenido
-            </div>
+      )}
 
-            <div className="mt-4 space-y-3 text-sm">
-              {/* IPC values */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-medium uppercase text-gray-500">IPC partida ({calc.fromPeriod})</p>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-gray-900">{calc.fromIndexValue.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase text-gray-500">IPC llegada ({calc.toPeriod})</p>
-                  <p className="mt-0.5 font-mono text-lg font-bold text-gray-900">{calc.toIndexValue.toFixed(2)}</p>
-                </div>
+      {/* Error */}
+      {result?.kind === "error" && (
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> <span>{result.message}</span>
+          </div>
+          <Button variant="outline" onClick={reset}>Volver</Button>
+        </div>
+      )}
+
+      {/* Faltan índices */}
+      {result?.kind === "needs_index" && (
+        <div className="space-y-3">
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Para sugerir el aumento por <span className="font-medium">{indexLabel(result.indexType)}</span> faltan
+              cargar estos meses: <span className="font-medium">{result.missing.map(formatPeriodShort).join(", ")}</span>.
+            </span>
+          </div>
+          <div className="flex gap-3">
+            <Link href="/configuracion/indices" className="text-sm font-medium text-teal-600 hover:text-teal-700">
+              Cargar índices →
+            </Link>
+            <button onClick={reset} className="text-sm text-gray-500 hover:text-gray-700">Volver</button>
+          </div>
+        </div>
+      )}
+
+      {/* Cálculo OK o manual */}
+      {(result?.kind === "ok" || result?.kind === "manual_only") && (
+        <div className="space-y-5">
+          {calc ? (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-5">
+              <div className="flex items-center gap-2 text-sm font-medium text-green-700">
+                <Check className="h-4 w-4" /> Sugerido por {indexLabel(calc.indexType)} ({calc.monthsCovered} meses)
               </div>
 
-              <Separator />
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {calc.months.map((m) => (
+                  <span key={m.period} className="rounded-full bg-white px-2.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200">
+                    {formatPeriodShort(m.period)}: <span className="font-medium text-gray-900">+{((m.factor - 1) * 100).toFixed(1)}%</span>
+                  </span>
+                ))}
+              </div>
 
-              {/* Calculation details */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <p className="text-xs font-medium uppercase text-gray-500">Coeficiente</p>
                   <p className="mt-0.5 font-mono font-bold text-gray-900">{calc.coefficient.toFixed(4)}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase text-gray-500">Variacion</p>
+                  <p className="text-xs font-medium uppercase text-gray-500">Variación</p>
                   <p className="mt-0.5 font-bold text-green-700">+{calc.percentage.toFixed(2)}%</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase text-gray-500">Meses IPC</p>
-                  <p className="mt-0.5 font-bold text-gray-900">{calc.monthsCovered}</p>
+                  <p className="text-xs font-medium uppercase text-gray-500">Monto sugerido</p>
+                  <p className="mt-0.5 font-bold text-gray-900">{formatCurrency(calc.suggestedNewRent, currency)}</p>
                 </div>
               </div>
-
-              <Separator />
-
-              {/* Rent result */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-medium uppercase text-gray-500">Alquiler actual</p>
-                  <p className="mt-0.5 text-lg font-bold text-gray-900">{formatCurrency(calc.previousRent, currency)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium uppercase text-gray-500">Alquiler nuevo</p>
-                  <p className="mt-0.5 text-lg font-bold text-green-700">{formatCurrency(calc.newRent, currency)}</p>
-                </div>
-              </div>
-
-              <p className="text-xs text-gray-500">
-                Formula: {formatCurrency(calc.previousRent, currency)} × ({calc.toIndexValue.toFixed(2)} / {calc.fromIndexValue.toFixed(2)}) = {formatCurrency(calc.newRent, currency)}
-              </p>
             </div>
-          </div>
+          ) : (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              Este contrato ajusta por <span className="font-medium">{indexLabel(resultIndexType)}</span>: ingresá el monto a mano.
+            </p>
+          )}
 
-          {/* Manual override */}
+          {/* Monto final editable */}
           <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="use-override"
-                checked={useOverride}
-                onChange={(e) => setUseOverride(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-              />
-              <Label htmlFor="use-override" className="flex cursor-pointer items-center gap-1.5 text-sm font-medium">
-                <PenLine className="h-3.5 w-3.5" /> Usar monto manual (override)
-              </Label>
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <Label htmlFor="final-rent">Nuevo alquiler a aplicar</Label>
+                <Input
+                  id="final-rent"
+                  type="number"
+                  value={finalRent}
+                  onChange={(e) => setFinalRent(e.target.value)}
+                  className="mt-1"
+                  placeholder={calc ? String(calc.suggestedNewRent) : "0"}
+                  autoFocus
+                />
+              </div>
+              {calc && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFinalRent(String(calc.suggestedNewRent))}
+                  className="mb-0.5"
+                  title="Usar el sugerido"
+                >
+                  <RotateCcw className="mr-1 h-3.5 w-3.5" /> Sugerido
+                </Button>
+              )}
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              Alquiler actual: <span className="font-medium text-gray-700">{formatCurrency(currentRent, currency)}</span>
+              {calc && <> · Sugerido: <span className="font-medium text-gray-700">{formatCurrency(calc.suggestedNewRent, currency)}</span></>}
             </div>
 
-            {useOverride && (
-              <div className="mt-4 space-y-3">
-                <div>
-                  <Label htmlFor="override-rent">Monto final a aplicar</Label>
-                  <Input
-                    id="override-rent"
-                    type="number"
-                    value={overrideRent || ""}
-                    onChange={(e) => setOverrideRent(Number(e.target.value))}
-                    className="mt-1"
-                    placeholder={String(calc.newRent)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="override-reason">Motivo del override (minimo 10 caracteres)</Label>
-                  <Textarea
-                    id="override-reason"
-                    value={overrideReason}
-                    onChange={(e) => setOverrideReason(e.target.value)}
-                    className="mt-1"
-                    placeholder="Ej: Acuerdo con inquilino por reparaciones pendientes..."
-                    rows={2}
-                  />
-                  {overrideReason.length > 0 && overrideReason.length < 10 && (
-                    <p className="mt-1 text-xs text-red-500">{10 - overrideReason.length} caracteres mas</p>
-                  )}
-                </div>
+            {overridden && (
+              <div className="mt-3">
+                <Label htmlFor="note">Motivo (opcional — quedó distinto al sugerido)</Label>
+                <Textarea
+                  id="note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="mt-1"
+                  placeholder="Ej: acuerdo con el dueño, no se aplicó el índice completo…"
+                  rows={2}
+                />
               </div>
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3">
-            <Button onClick={handleApply} disabled={loading} className="bg-teal-600 hover:bg-teal-700">
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirmar ajuste
+            <Button onClick={handleApply} disabled={applying} className="bg-teal-600 hover:bg-teal-700">
+              {applying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Aplicar aumento
             </Button>
-            <Button variant="outline" onClick={() => { setCalc(null); setUseOverride(false); setError(null); }}>
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={reset} disabled={applying}>Cancelar</Button>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

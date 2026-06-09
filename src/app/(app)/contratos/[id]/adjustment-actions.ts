@@ -1,153 +1,157 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import {
-  calculateIpcAdjustment,
-  type AdjustmentCalculation,
-  type IpcReference,
-  type LastAdjustmentInfo,
-} from "@/lib/indices/ipc-calculator";
-import { getCachedIndex, setCachedIndex } from "@/lib/indices/cache";
-import { getIPCForMonth } from "@/lib/indices/indec";
 import { revalidatePath } from "next/cache";
 import { addMonths, format } from "date-fns";
+import {
+  cyclePeriods,
+  computeAdjustment,
+  isCoefficientIndex,
+  type ManualAdjustmentCalc,
+} from "@/lib/indices/manual-adjustment";
+
+export type AdjustmentCalcResult =
+  | { kind: "ok"; calc: ManualAdjustmentCalc }
+  | { kind: "needs_index"; indexType: string; periods: string[]; missing: string[] }
+  | { kind: "manual_only"; indexType: string; previousRent: number }
+  | { kind: "error"; message: string };
 
 /**
- * Get IPC value for a "YYYY-MM" period, using cache first, then API.
+ * Calcula el aumento SUGERIDO usando los índices cargados a mano en index_cache.
+ * No aplica nada: solo propone. El valor final lo decide la persona.
  */
-async function getIpcValueWithCache(period: string): Promise<number | null> {
-  const supabase = await createClient();
-  const dbPeriod = period + "-01";
-
-  const cached = await getCachedIndex(supabase, "IPC", dbPeriod);
-  if (cached !== null) return cached;
-
-  const [yearStr, monthStr] = period.split("-");
-  const value = await getIPCForMonth(Number(yearStr), Number(monthStr));
-
-  if (value !== null) {
-    await setCachedIndex(supabase, "IPC", dbPeriod, value);
-  }
-
-  return value;
-}
-
-/**
- * Get the last adjustment info (arrival month of the previous adjustment).
- */
-async function getLastAdjustmentInfo(contractId: string): Promise<LastAdjustmentInfo> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("adjustment_history")
-    .select("to_period, index_value_to")
-    .eq("contract_id", contractId)
-    .order("applied_date", { ascending: false })
-    .limit(1)
-    .single();
-
-  if (!data || !data.to_period) return null;
-
-  return {
-    toPeriod: data.to_period,
-    toValue: data.index_value_to,
-  };
-}
-
-export async function calculatePendingAdjustment(
-  contractId: string
-): Promise<{ data: AdjustmentCalculation | null; error: string | null }> {
+export async function calculatePendingAdjustment(contractId: string): Promise<AdjustmentCalcResult> {
   try {
     const supabase = await createClient();
 
     const { data: contract } = await supabase
       .from("contracts")
-      .select("current_rent, ipc_referencia_inicial")
+      .select("current_rent")
       .eq("id", contractId)
       .single();
+    if (!contract) return { kind: "error", message: "Contrato no encontrado" };
 
-    if (!contract) return { data: null, error: "Contrato no encontrado" };
+    const { data: adj } = await supabase
+      .from("contract_adjustments")
+      .select("index_type, frequency_months, next_adjustment_date")
+      .eq("contract_id", contractId)
+      .single();
+    if (!adj) return { kind: "error", message: "Este contrato no tiene configuración de ajuste." };
 
-    const lastAdj = await getLastAdjustmentInfo(contractId);
-    const ipcRef = contract.ipc_referencia_inicial as IpcReference | null;
+    const previousRent = contract.current_rent as number;
+    const indexType = adj.index_type as string;
 
-    const result = await calculateIpcAdjustment(
-      contract.current_rent,
-      lastAdj,
-      ipcRef,
-      new Date(),
-      getIpcValueWithCache
-    );
+    // % fijo / personalizado: no hay índice que componer, va a mano.
+    if (!isCoefficientIndex(indexType)) {
+      return { kind: "manual_only", indexType, previousRent };
+    }
 
-    return { data: result, error: null };
+    const periods = cyclePeriods(adj.next_adjustment_date as string, adj.frequency_months as number);
+
+    const { data: rows } = await supabase
+      .from("index_cache")
+      .select("period, value")
+      .eq("index_type", indexType)
+      .in("period", periods.map((p) => `${p}-01`));
+
+    const valuesByPeriod = new Map<string, number>();
+    for (const r of rows ?? []) {
+      valuesByPeriod.set((r.period as string).substring(0, 7), Number(r.value));
+    }
+
+    const { calc, missingPeriods } = computeAdjustment({ indexType, previousRent, periods, valuesByPeriod });
+    if (!calc) return { kind: "needs_index", indexType, periods, missing: missingPeriods };
+
+    return { kind: "ok", calc };
   } catch (err) {
-    return { data: null, error: err instanceof Error ? err.message : "Error al calcular el aumento" };
+    return { kind: "error", message: err instanceof Error ? err.message : "Error al calcular el aumento" };
   }
 }
 
+export interface ApplyAdjustmentInput {
+  finalRent: number;
+  indexType: string;
+  suggestedNewRent: number | null;
+  coefficient: number | null;
+  percentage: number | null;
+  fromPeriod: string | null;
+  toPeriod: string | null;
+  monthsCovered: number | null;
+  note?: string;
+}
+
+/**
+ * Aplica el aumento con el monto FINAL (manual). Guarda en el historial el sugerido vs.
+ * el aplicado, actualiza el alquiler y recalcula la próxima fecha de ajuste.
+ */
 export async function applyAdjustment(
   contractId: string,
-  calculation: AdjustmentCalculation,
-  override?: { finalRent: number; reason: string }
+  input: ApplyAdjustmentInput
 ): Promise<{ error: string | null }> {
   try {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: adjConfig } = await supabase
-    .from("contract_adjustments")
-    .select("id, frequency_months, next_adjustment_date")
-    .eq("contract_id", contractId)
-    .single();
+    if (!input.finalRent || input.finalRent <= 0) {
+      return { error: "Ingresá un monto válido." };
+    }
 
-  const isOverride = override !== undefined;
-  const finalRent = isOverride ? override.finalRent : calculation.newRent;
+    const { data: contract } = await supabase
+      .from("contracts")
+      .select("current_rent")
+      .eq("id", contractId)
+      .single();
+    if (!contract) return { error: "Contrato no encontrado" };
 
-  // Insert adjustment history with full traceability
-  const { error: histErr } = await supabase
-    .from("adjustment_history")
-    .insert({
+    const { data: adjConfig } = await supabase
+      .from("contract_adjustments")
+      .select("id, frequency_months, next_adjustment_date")
+      .eq("contract_id", contractId)
+      .single();
+
+    const previousRent = contract.current_rent as number;
+    const appliedPct = previousRent > 0
+      ? Number(((input.finalRent / previousRent - 1) * 100).toFixed(2))
+      : 0;
+    const isOverride = input.suggestedNewRent != null && input.finalRent !== input.suggestedNewRent;
+
+    const { error: histErr } = await supabase.from("adjustment_history").insert({
       contract_id: contractId,
       applied_date: new Date().toISOString().split("T")[0],
-      previous_rent: calculation.previousRent,
-      new_rent: finalRent,
-      index_type: "IPC",
-      index_value_from: calculation.fromIndexValue,
-      index_value_to: calculation.toIndexValue,
-      percentage_applied: Number(calculation.percentage.toFixed(2)),
+      previous_rent: previousRent,
+      new_rent: input.finalRent,
+      index_type: input.indexType,
+      percentage_applied: appliedPct,
       applied_by: user?.id ?? null,
-      from_period: calculation.fromPeriod,
-      to_period: calculation.toPeriod,
-      coefficient: Number(calculation.coefficient.toFixed(6)),
-      months_covered: calculation.monthsCovered,
-      suggested_new_rent: calculation.newRent,
+      suggested_new_rent: input.suggestedNewRent,
       manual_override: isOverride,
-      override_reason: isOverride ? override.reason : null,
+      override_reason: input.note?.trim() ? input.note.trim() : null,
+      from_period: input.fromPeriod,
+      to_period: input.toPeriod,
+      coefficient: input.coefficient,
+      months_covered: input.monthsCovered,
     });
-  if (histErr) throw histErr;
+    if (histErr) throw histErr;
 
-  // Update contract current_rent
-  const { error: contractErr } = await supabase
-    .from("contracts")
-    .update({ current_rent: finalRent })
-    .eq("id", contractId);
-  if (contractErr) throw contractErr;
+    const { error: contractErr } = await supabase
+      .from("contracts")
+      .update({ current_rent: input.finalRent })
+      .eq("id", contractId);
+    if (contractErr) throw contractErr;
 
-  // Recalculate next adjustment date
-  if (adjConfig) {
-    const nextDate = addMonths(
-      new Date(adjConfig.next_adjustment_date),
-      adjConfig.frequency_months
-    );
-    await supabase
-      .from("contract_adjustments")
-      .update({ next_adjustment_date: format(nextDate, "yyyy-MM-dd") })
-      .eq("id", adjConfig.id);
-  }
+    if (adjConfig) {
+      const nextDate = addMonths(new Date(adjConfig.next_adjustment_date as string), adjConfig.frequency_months as number);
+      await supabase
+        .from("contract_adjustments")
+        .update({ next_adjustment_date: format(nextDate, "yyyy-MM-dd") })
+        .eq("id", adjConfig.id);
+    }
 
-  revalidatePath(`/contratos/${contractId}`);
-  revalidatePath("/contratos");
-  revalidatePath("/dashboard");
-  return { error: null };
+    revalidatePath(`/contratos/${contractId}`);
+    revalidatePath("/contratos");
+    revalidatePath("/aumentos");
+    revalidatePath("/dashboard");
+    return { error: null };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Error al aplicar el aumento" };
   }
