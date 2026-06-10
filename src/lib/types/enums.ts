@@ -60,7 +60,7 @@ export const INDEX_TYPES = {
   IPC: "IPC (INDEC)",
   casa_propia: "Casa Propia",
   fixed_percentage: "Porcentaje fijo",
-  custom: "Personalizado",
+  custom: "Otro / Manual",
 } as const;
 export type IndexType = keyof typeof INDEX_TYPES;
 

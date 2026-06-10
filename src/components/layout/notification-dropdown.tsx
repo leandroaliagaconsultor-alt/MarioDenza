@@ -8,6 +8,7 @@ interface Props {
   notifs: {
     overdueCount: number;
     expiringCount: number;
+    expiredCount: number;
     adjustmentCount: number;
     total: number;
   };
@@ -57,6 +58,16 @@ export function NotificationDropdown({ notifs }: Props) {
                   >
                     <Calendar className="h-4 w-4 shrink-0" />
                     <span>{notifs.expiringCount} contrato{notifs.expiringCount > 1 ? "s" : ""} por vencer</span>
+                  </Link>
+                )}
+                {notifs.expiredCount > 0 && (
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2 rounded-md p-2.5 text-sm text-orange-700 transition hover:bg-orange-50"
+                  >
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>{notifs.expiredCount} contrato{notifs.expiredCount > 1 ? "s" : ""} vencido{notifs.expiredCount > 1 ? "s" : ""} (a renovar)</span>
                   </Link>
                 )}
                 {notifs.adjustmentCount > 0 && (

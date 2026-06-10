@@ -38,7 +38,7 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
       const res = await calculatePendingAdjustment(contractId);
       setResult(res);
       if (res.kind === "ok") setFinalRent(String(res.calc.suggestedNewRent));
-      else if (res.kind === "manual_only") setFinalRent("");
+      else if (res.kind === "reference") setFinalRent("");
     } catch (err) {
       setResult({ kind: "error", message: err instanceof Error ? err.message : "Error al calcular" });
     } finally {
@@ -47,7 +47,7 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
   }
 
   async function handleApply() {
-    if (!result || (result.kind !== "ok" && result.kind !== "manual_only")) return;
+    if (!result || (result.kind !== "ok" && result.kind !== "reference")) return;
     const amount = Number(finalRent);
     if (!amount || amount <= 0) { toast.error("Ingresá el nuevo monto del alquiler"); return; }
 
@@ -87,7 +87,7 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
 
   const calc = result?.kind === "ok" ? result.calc : null;
   const resultIndexType =
-    result?.kind === "ok" ? result.calc.indexType : result?.kind === "manual_only" ? result.indexType : "";
+    result?.kind === "ok" ? result.calc.indexType : result?.kind === "reference" ? result.indexType : "";
   const amount = Number(finalRent);
   const overridden = calc != null && amount > 0 && amount !== calc.suggestedNewRent;
 
@@ -141,8 +141,8 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
         </div>
       )}
 
-      {/* Cálculo OK o manual */}
-      {(result?.kind === "ok" || result?.kind === "manual_only") && (
+      {/* Cálculo OK o referencias (Otro / Manual) */}
+      {(result?.kind === "ok" || result?.kind === "reference") && (
         <div className="space-y-5">
           {calc ? (
             <div className="rounded-lg border border-green-200 bg-green-50 p-5">
@@ -173,11 +173,59 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
                 </div>
               </div>
             </div>
-          ) : (
-            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              Este contrato ajusta por <span className="font-medium">{indexLabel(resultIndexType)}</span>: ingresá el monto a mano.
-            </p>
-          )}
+          ) : result?.kind === "reference" ? (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-5">
+              <div className="flex items-center gap-2 text-sm font-medium text-blue-700">
+                <TrendingUp className="h-4 w-4" /> Referencia — cómo quedaría con cada índice
+              </div>
+              <p className="mt-1 text-xs text-blue-700/80">
+                Este contrato es <span className="font-medium">{indexLabel(resultIndexType)}</span>: no se aplica un índice
+                automático. Mirá las referencias y decidí el monto (o tipeá el tuyo).
+              </p>
+
+              {result.periods.length > 0 ? (
+                <>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {result.periods.map((p) => (
+                      <span key={p} className="rounded-full bg-white px-2.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200">
+                        {formatPeriodShort(p)}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {result.references.map((ref) => (
+                      <div key={ref.indexType} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 ring-1 ring-gray-200">
+                        <span className="text-sm font-medium text-gray-700">{indexLabel(ref.indexType)}</span>
+                        {ref.calc ? (
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-gray-500">+{ref.calc.percentage.toFixed(2)}%</span>
+                            <span className="text-sm font-semibold text-gray-900">{formatCurrency(ref.calc.suggestedNewRent, currency)}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setFinalRent(String(ref.calc!.suggestedNewRent))}
+                            >
+                              Usar
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-right text-xs text-amber-600">
+                            Faltan meses: {ref.missing.map(formatPeriodShort).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="mt-2 text-xs text-amber-700">
+                  Este contrato no tiene ciclo de ajuste configurado: ingresá el monto a mano.
+                </p>
+              )}
+            </div>
+          ) : null}
 
           {/* Monto final editable */}
           <div className="rounded-lg border border-gray-200 bg-white p-4">

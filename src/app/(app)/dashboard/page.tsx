@@ -68,6 +68,40 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Vencidos — a renovar o finalizar */}
+        {stats.expiredContracts.length > 0 && (
+          <div className="rounded-xl border border-orange-200 bg-orange-50/40 p-6 shadow-sm lg:col-span-2">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <AlertTriangle className="h-5 w-5 text-orange-500" /> Vencidos — a renovar o finalizar
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">
+              Contratos cuya fecha de fin ya pasó. Renoválos (nuevo contrato) o finalizálos.
+            </p>
+            <Separator className="my-3" />
+            <div className="space-y-3">
+              {stats.expiredContracts.slice(0, 8).map((c: any) => {
+                const prop = Array.isArray(c.property) ? c.property[0] : c.property;
+                const ten = Array.isArray(c.tenant) ? c.tenant[0] : c.tenant;
+                return (
+                  <Link key={c.id} href={`/contratos/${c.id}`} className="flex items-center justify-between rounded-lg border border-orange-100 bg-white p-3 transition hover:bg-orange-50/50">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{prop?.address}{prop?.unit ? ` - ${prop.unit}` : ""}</p>
+                      <p className="text-xs text-gray-500">{ten?.full_name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-orange-600">Venció {formatDate(c.end_date)}</p>
+                      <p className="text-xs text-orange-500">Requiere acción</p>
+                    </div>
+                  </Link>
+                );
+              })}
+              {stats.expiredContracts.length > 8 && (
+                <p className="text-center text-xs text-gray-400">y {stats.expiredContracts.length - 8} más…</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Overdue payments */}
         <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">

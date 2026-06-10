@@ -28,9 +28,11 @@ export function StepAdjustments() {
             className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
           >
             <option value="">Sin aumentos programados</option>
-            {Object.entries(INDEX_TYPES).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
+            {Object.entries(INDEX_TYPES)
+              .filter(([v]) => v !== "fixed_percentage")
+              .map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
           </select>
         </div>
 
@@ -58,17 +60,10 @@ export function StepAdjustments() {
               />
             </div>
 
-            {indexType === "fixed_percentage" && (
-              <div>
-                <Label htmlFor="adjustment_fixed_percentage">Porcentaje fijo (%)</Label>
-                <Input
-                  id="adjustment_fixed_percentage"
-                  type="number"
-                  step="0.1"
-                  {...register("adjustment_fixed_percentage", { valueAsNumber: true })}
-                  className="mt-1"
-                />
-              </div>
+            {indexType === "custom" && (
+              <p className="text-xs text-gray-500 sm:col-span-2">
+                "Otro / Manual": al aplicar el aumento te mostramos ICL, IPC y Casa Propia como referencia y vos decidís el monto final.
+              </p>
             )}
           </>
         )}

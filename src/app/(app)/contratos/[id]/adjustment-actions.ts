@@ -6,14 +6,17 @@ import { addMonths, format } from "date-fns";
 import {
   cyclePeriods,
   computeAdjustment,
+  computeReferences,
   isCoefficientIndex,
+  REFERENCE_INDICES,
   type ManualAdjustmentCalc,
+  type ReferenceCalc,
 } from "@/lib/indices/manual-adjustment";
 
 export type AdjustmentCalcResult =
   | { kind: "ok"; calc: ManualAdjustmentCalc }
   | { kind: "needs_index"; indexType: string; periods: string[]; missing: string[] }
-  | { kind: "manual_only"; indexType: string; previousRent: number }
+  | { kind: "reference"; indexType: string; previousRent: number; periods: string[]; references: ReferenceCalc[] }
   | { kind: "error"; message: string };
 
 /**
@@ -41,9 +44,29 @@ export async function calculatePendingAdjustment(contractId: string): Promise<Ad
     const previousRent = contract.current_rent as number;
     const indexType = adj.index_type as string;
 
-    // % fijo / personalizado: no hay índice que componer, va a mano.
+    // "Otro / Manual": no hay un índice que componer. Mostramos ICL/IPC/Casa Propia como
+    // referencia (cómo quedaría con cada uno) y el monto final lo decide la persona.
     if (!isCoefficientIndex(indexType)) {
-      return { kind: "manual_only", indexType, previousRent };
+      const freq = adj.frequency_months as number | null;
+      const nextDate = adj.next_adjustment_date as string | null;
+      if (!freq || freq <= 0 || !nextDate) {
+        return { kind: "reference", indexType, previousRent, periods: [], references: [] };
+      }
+      const refPeriods = cyclePeriods(nextDate, freq);
+      const { data: refRows } = await supabase
+        .from("index_cache")
+        .select("index_type, period, value")
+        .in("index_type", REFERENCE_INDICES as unknown as string[])
+        .in("period", refPeriods.map((p) => `${p}-01`));
+
+      const valuesByIndex = new Map<string, Map<string, number>>();
+      for (const r of refRows ?? []) {
+        const it = r.index_type as string;
+        if (!valuesByIndex.has(it)) valuesByIndex.set(it, new Map());
+        valuesByIndex.get(it)!.set((r.period as string).substring(0, 7), Number(r.value));
+      }
+      const references = computeReferences({ previousRent, periods: refPeriods, valuesByIndex });
+      return { kind: "reference", indexType, previousRent, periods: refPeriods, references };
     }
 
     const periods = cyclePeriods(adj.next_adjustment_date as string, adj.frequency_months as number);

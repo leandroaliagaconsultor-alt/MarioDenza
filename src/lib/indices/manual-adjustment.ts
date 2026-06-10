@@ -89,6 +89,33 @@ export function computeAdjustment(params: {
   };
 }
 
+/** Los 3 índices que se muestran como referencia para los contratos "Otro / Manual". */
+export const REFERENCE_INDICES = ["ICL", "IPC", "casa_propia"] as const;
+
+export interface ReferenceCalc {
+  indexType: string;
+  calc: ManualAdjustmentCalc | null;
+  missing: string[]; // meses sin cargar (si calc es null)
+}
+
+/**
+ * Para un mismo ciclo, calcula cómo quedaría el aumento con cada índice de referencia
+ * (ICL / IPC / Casa Propia). No elige uno: los muestra los tres para que la persona decida.
+ * `valuesByIndex`: indexType -> ("YYYY-MM" -> valor cargado).
+ */
+export function computeReferences(params: {
+  previousRent: number;
+  periods: string[];
+  valuesByIndex: Map<string, Map<string, number>>;
+}): ReferenceCalc[] {
+  const { previousRent, periods, valuesByIndex } = params;
+  return REFERENCE_INDICES.map((indexType) => {
+    const valuesByPeriod = valuesByIndex.get(indexType) ?? new Map<string, number>();
+    const { calc, missingPeriods } = computeAdjustment({ indexType, previousRent, periods, valuesByPeriod });
+    return { indexType, calc, missing: missingPeriods };
+  });
+}
+
 /** "2026-02" -> "feb 2026" (para mostrar). */
 export function formatPeriodShort(period: string): string {
   const NAMES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];

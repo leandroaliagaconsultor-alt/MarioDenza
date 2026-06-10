@@ -8,6 +8,8 @@ export async function getDashboardStats() {
 
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const today = new Date().toISOString().split("T")[0];
+  const in90days = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
   const [
     { count: totalProperties },
@@ -16,6 +18,7 @@ export async function getDashboardStats() {
     { count: maintenanceProperties },
     { count: activeContracts },
     { data: expiringContracts },
+    { data: expiredContracts },
     { data: overduePayments },
     { data: monthCommissions },
     pendingAdjustments,
@@ -29,7 +32,14 @@ export async function getDashboardStats() {
     supabase.from("contracts")
       .select("id, end_date, property:properties(address, unit), tenant:tenants(full_name)")
       .in("status", ["activo", "por_vencer"])
-      .lte("end_date", new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
+      .gte("end_date", today)
+      .lte("end_date", in90days)
+      .order("end_date"),
+    // Ya vencidos (fecha de fin pasada) que siguen activos/por_vencer → a renovar o finalizar
+    supabase.from("contracts")
+      .select("id, end_date, property:properties(address, unit), tenant:tenants(full_name)")
+      .in("status", ["activo", "por_vencer"])
+      .lt("end_date", today)
       .order("end_date"),
     supabase.from("payments")
       .select("id, period, amount_due, due_date, contract:contracts(property:properties(address, unit), tenant:tenants(full_name, phone))")
@@ -68,6 +78,7 @@ export async function getDashboardStats() {
     availableProperties: availableProperties ?? 0,
     activeContracts: activeContracts ?? 0,
     expiringContracts: expiringContracts || [],
+    expiredContracts: expiredContracts || [],
     overduePayments: overduePayments || [],
     totalOverdue,
     totalCommissions,
@@ -79,6 +90,8 @@ export async function getDashboardStats() {
 
 export async function getNotifications() {
   const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
+  const in90days = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
   // Overdue payments count
   const { count: overdueCount } = await supabase
@@ -86,12 +99,20 @@ export async function getNotifications() {
     .select("*", { count: "exact", head: true })
     .eq("status", "vencido");
 
-  // Expiring contracts count (90 days)
+  // Contratos que vencen en los próximos 90 días (hoy → hoy+90)
   const { count: expiringCount } = await supabase
     .from("contracts")
     .select("*", { count: "exact", head: true })
     .in("status", ["activo", "por_vencer"])
-    .lte("end_date", new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]);
+    .gte("end_date", today)
+    .lte("end_date", in90days);
+
+  // Contratos ya vencidos (fecha de fin pasada) que siguen activos/por_vencer
+  const { count: expiredCount } = await supabase
+    .from("contracts")
+    .select("*", { count: "exact", head: true })
+    .in("status", ["activo", "por_vencer"])
+    .lt("end_date", today);
 
   // Pending adjustments: misma regla de 15 días que el resto de la app
   const adjustmentCount = await getUpcomingAdjustmentsCount().catch(() => 0);
@@ -99,7 +120,8 @@ export async function getNotifications() {
   return {
     overdueCount: overdueCount ?? 0,
     expiringCount: expiringCount ?? 0,
+    expiredCount: expiredCount ?? 0,
     adjustmentCount,
-    total: (overdueCount ?? 0) + (expiringCount ?? 0) + adjustmentCount,
+    total: (overdueCount ?? 0) + (expiringCount ?? 0) + (expiredCount ?? 0) + adjustmentCount,
   };
 }

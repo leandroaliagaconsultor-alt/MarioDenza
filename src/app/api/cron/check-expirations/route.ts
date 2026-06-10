@@ -9,13 +9,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = createAdminClient();
+    const today = new Date().toISOString().split("T")[0];
     const in90days = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    // Mark contracts expiring within 90 days as "por_vencer"
+    // Marcar como "por_vencer" los que vencen en los próximos 90 días (hoy → hoy+90).
+    // Importante: con piso en hoy, los ya vencidos NO se re-marcan (se ven como "Vencidos" en el dashboard).
     const { data: expiring } = await supabase
       .from("contracts")
       .select("id")
       .eq("status", "activo")
+      .gte("end_date", today)
       .lte("end_date", in90days);
 
     if (expiring && expiring.length > 0) {
@@ -23,6 +26,7 @@ export async function GET(request: NextRequest) {
         .from("contracts")
         .update({ status: "por_vencer" })
         .eq("status", "activo")
+        .gte("end_date", today)
         .lte("end_date", in90days);
     }
 

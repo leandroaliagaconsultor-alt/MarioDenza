@@ -89,11 +89,13 @@ export function normalizeIndice(raw: unknown): { type: ImportIndexType; warning?
   if (s === "ICL") return { type: "ICL" };
   if (s === "IPC") return { type: "IPC" };
   if (s.includes("CASA")) return { type: "casa_propia" };
+  // Combinado (IPC+ICL), monto fijo, o cualquier otra variante → "Otro / Manual":
+  // al aumentar se muestran ICL/IPC/Casa Propia de referencia y el monto final es manual.
   if (s.includes("ICL") && s.includes("IPC")) {
-    return { type: "ICL", warning: `Índice combinado "${String(raw).trim()}": se cargó ICL, revisalo a mano.` };
+    return { type: "custom", warning: `Índice combinado "${String(raw).trim()}": se cargó como "Otro / Manual" (referencia ICL·IPC·Casa Propia).` };
   }
-  if (!s) return { type: "ICL", warning: "Sin índice: se asumió ICL." };
-  return { type: "ICL", warning: `Índice no reconocido "${String(raw).trim()}": se asumió ICL.` };
+  if (!s) return { type: "custom", warning: 'Sin índice: se cargó como "Otro / Manual".' };
+  return { type: "custom", warning: `Índice "${String(raw).trim()}": se cargó como "Otro / Manual" (referencia ICL·IPC·Casa Propia).` };
 }
 
 /** Comisión: 0.03 -> 3 ; 3 -> 3. */
