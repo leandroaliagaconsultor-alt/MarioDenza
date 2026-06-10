@@ -7,16 +7,37 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { CONTRACT_STATUSES, CONTRACT_STATUS_COLORS, CURRENCY_TYPES } from "@/lib/types/enums";
-import type { ContractStatus, CurrencyType } from "@/lib/types/enums";
+import type { CurrencyType } from "@/lib/types/enums";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 interface Props {
   searchParams: Promise<{ q?: string; status?: string }>;
 }
 
+const CONTRACT_TABS = [
+  { key: "activo", label: "Activo" },
+  { key: "por_vencer", label: "Por vencer" },
+  { key: "vencido", label: "Vencido" },
+  { key: "finalizado", label: "Finalizado" },
+  { key: "rescindido", label: "Rescindido" },
+];
+
+// "Por vencer" y "vencido" se derivan de end_date (no del status guardado, que queda
+// solo en activo/finalizado/rescindido).
+function contractBadge(status: string, endDate: string, todayISO: string, in90ISO: string): { label: string; colorClass: string } {
+  if (status === "finalizado" || status === "rescindido") {
+    return { label: CONTRACT_STATUSES[status], colorClass: CONTRACT_STATUS_COLORS[status] };
+  }
+  if (endDate && endDate < todayISO) return { label: "Vencido", colorClass: "bg-red-100 text-red-700" };
+  if (endDate && endDate <= in90ISO) return { label: "Por vencer", colorClass: CONTRACT_STATUS_COLORS.por_vencer };
+  return { label: "Activo", colorClass: CONTRACT_STATUS_COLORS.activo };
+}
+
 export default async function ContratosPage({ searchParams }: Props) {
   const { q, status } = await searchParams;
   const contracts = await getContracts(q, status);
+  const todayISO = new Date().toISOString().split("T")[0];
+  const in90ISO = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
   return (
     <div className="space-y-6">
@@ -38,7 +59,7 @@ export default async function ContratosPage({ searchParams }: Props) {
           <Link href="/contratos">
             <Button variant={!status ? "default" : "outline"} size="sm" className={!status ? "bg-teal-600" : ""}>Todos</Button>
           </Link>
-          {Object.entries(CONTRACT_STATUSES).map(([key, label]) => (
+          {CONTRACT_TABS.map(({ key, label }) => (
             <Link key={key} href={`/contratos?status=${key}${q ? `&q=${q}` : ""}`}>
               <Button variant={status === key ? "default" : "outline"} size="sm" className={status === key ? "bg-teal-600" : ""}>{label}</Button>
             </Link>
@@ -65,6 +86,7 @@ export default async function ContratosPage({ searchParams }: Props) {
                 {contracts.map((c) => {
                   const prop = c.property as { id: string; address: string; unit?: string } | null;
                   const ten = c.tenant as { id: string; full_name: string } | null;
+                  const badge = contractBadge(c.status, c.end_date, todayISO, in90ISO);
                   return (
                     <tr key={c.id} className="relative transition-colors hover:bg-gray-50/50">
                       <td className="px-6 py-4">
@@ -80,7 +102,7 @@ export default async function ContratosPage({ searchParams }: Props) {
                         {formatDate(c.start_date)} — {formatDate(c.end_date)}
                       </td>
                       <td className="px-6 py-4">
-                        <StatusBadge label={CONTRACT_STATUSES[c.status as ContractStatus]} colorClass={CONTRACT_STATUS_COLORS[c.status as ContractStatus]} />
+                        <StatusBadge label={badge.label} colorClass={badge.colorClass} />
                       </td>
                     </tr>
                   );

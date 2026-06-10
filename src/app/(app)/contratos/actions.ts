@@ -17,7 +17,16 @@ export async function getContracts(search?: string, status?: string) {
     `)
     .order("created_at", { ascending: false });
 
-  if (status) {
+  if (status === "por_vencer") {
+    // "Por vencer" = termina en los próximos 90 días (por fecha, no por el status guardado).
+    const today = new Date().toISOString().split("T")[0];
+    const in90days = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    query = query.in("status", ["activo", "por_vencer"]).gte("end_date", today).lte("end_date", in90days);
+  } else if (status === "vencido") {
+    // "Vencido" = la fecha de fin ya pasó y el contrato sigue sin renovar/finalizar.
+    const today = new Date().toISOString().split("T")[0];
+    query = query.in("status", ["activo", "por_vencer"]).lt("end_date", today);
+  } else if (status) {
     query = query.eq("status", status);
   }
 
