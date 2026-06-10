@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { PAYMENT_STATUSES, PAYMENT_STATUS_COLORS, PAYMENT_METHODS } from "@/lib/types/enums";
 import type { PaymentStatus, CurrencyType, PaymentMethod } from "@/lib/types/enums";
 import { formatCurrency, formatDate, formatReceiptNumber } from "@/lib/utils/format";
+import { extrasTotal, type PaymentExtra } from "@/lib/payments/extras";
 import { RegisterPaymentForm } from "./register-form";
 import Link from "next/link";
 import { Building2, UserCheck, FileDown } from "lucide-react";
@@ -31,16 +32,20 @@ export default async function PaymentDetailPage({ params }: Props) {
   const currency = (contract?.currency ?? "ARS") as CurrencyType;
   const isPending = payment.status === "pendiente" || payment.status === "vencido";
 
-  // Calculate late fee if overdue
+  // Extras del pago + alquiler (= total esperado menos extras)
+  const extras = (Array.isArray(payment.extras) ? payment.extras : []) as PaymentExtra[];
+  const rent = payment.amount_due - extrasTotal(extras);
+
+  // Calculate late fee if overdue (sobre el alquiler, sin extras)
   let suggestedLateFee = 0;
   if (payment.status === "vencido" && contract?.late_fee_enabled && contract.late_fee_value) {
     const daysOverdue = Math.max(0, Math.floor((Date.now() - new Date(payment.due_date).getTime()) / (1000 * 60 * 60 * 24)));
     if (contract.late_fee_type === "percentage") {
-      suggestedLateFee = Math.round(payment.amount_due * (contract.late_fee_value / 100));
+      suggestedLateFee = Math.round(rent * (contract.late_fee_value / 100));
     } else if (contract.late_fee_type === "fixed") {
       suggestedLateFee = contract.late_fee_value;
     } else if (contract.late_fee_type === "daily_percentage") {
-      suggestedLateFee = Math.round(payment.amount_due * (contract.late_fee_value / 100) * daysOverdue);
+      suggestedLateFee = Math.round(rent * (contract.late_fee_value / 100) * daysOverdue);
     }
   }
 
@@ -159,6 +164,28 @@ export default async function PaymentDetailPage({ params }: Props) {
               </div>
             )}
           </dl>
+          {extras.length > 0 && (
+            <>
+              <Separator className="my-3" />
+              <p className="text-xs font-medium uppercase text-gray-500">Desglose</p>
+              <div className="mt-2 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Alquiler</span>
+                  <span className="text-gray-900">{formatCurrency(rent, currency)}</span>
+                </div>
+                {extras.map((e, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span className="text-gray-500">{e.concept}</span>
+                    <span className="text-gray-900">{formatCurrency(e.amount, currency)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between border-t border-gray-100 pt-1 font-medium">
+                  <span className="text-gray-700">Total</span>
+                  <span className="text-gray-900">{formatCurrency(payment.amount_due, currency)}</span>
+                </div>
+              </div>
+            </>
+          )}
           {payment.notes && (
             <>
               <Separator className="my-3" />
@@ -172,9 +199,10 @@ export default async function PaymentDetailPage({ params }: Props) {
       {isPending && (
         <RegisterPaymentForm
           paymentId={id}
-          amountDue={payment.amount_due}
+          rent={rent}
           currency={currency}
           suggestedLateFee={suggestedLateFee}
+          initialExtras={extras}
         />
       )}
     </div>

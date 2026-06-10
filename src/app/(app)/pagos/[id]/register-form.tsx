@@ -11,37 +11,51 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PAYMENT_METHODS } from "@/lib/types/enums";
 import { formatCurrency } from "@/lib/utils/format";
 import type { CurrencyType } from "@/lib/types/enums";
+import { ExtrasFields } from "@/components/forms/extras-fields";
+import type { PaymentExtra } from "@/lib/payments/extras";
 
 interface Props {
   paymentId: string;
-  amountDue: number;
+  rent: number; // alquiler del período (sin extras)
   currency: CurrencyType;
   suggestedLateFee?: number;
+  initialExtras?: PaymentExtra[];
 }
 
-export function RegisterPaymentForm({ paymentId, amountDue, currency, suggestedLateFee = 0 }: Props) {
+export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFee = 0, initialExtras = [] }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
+  const initialTotal = rent + initialExtras.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterPaymentValues>({
+  const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<RegisterPaymentValues>({
     resolver: zodResolver(registerPaymentSchema),
     defaultValues: {
-      amount_paid: amountDue,
+      amount_paid: initialTotal,
       paid_date: today,
       payment_method: "transferencia",
       discount_amount: 0,
       discount_reason: "",
       late_fee_amount: suggestedLateFee,
       notes: "",
+      extras: initialExtras,
     },
   });
+
+  const watchedExtras = watch("extras");
+  const extrasSum = (watchedExtras ?? []).reduce((s, e) => s + (Number(e?.amount) || 0), 0);
+  const total = rent + extrasSum;
+
+  // El monto pagado sigue al total a cobrar (alquiler + extras); igual queda editable para pagos parciales.
+  useEffect(() => {
+    setValue("amount_paid", total);
+  }, [total, setValue]);
 
   async function onSubmit(values: RegisterPaymentValues) {
     setLoading(true);
@@ -63,9 +77,39 @@ export function RegisterPaymentForm({ paymentId, amountDue, currency, suggestedL
           <CreditCard className="h-5 w-5 text-gray-400" />
           Registrar pago
         </h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Monto esperado: {formatCurrency(amountDue, currency)}
-        </p>
+        <Separator className="my-4" />
+
+        {/* Desglose: alquiler + extras = total */}
+        <div className="space-y-1.5 rounded-lg bg-gray-50 p-4 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Alquiler</span>
+            <span className="font-medium text-gray-900">{formatCurrency(rent, currency)}</span>
+          </div>
+          {(watchedExtras ?? []).map((e, i) =>
+            e?.concept ? (
+              <div key={i} className="flex items-center justify-between text-gray-500">
+                <span>{e.concept}</span>
+                <span>{formatCurrency(Number(e.amount) || 0, currency)}</span>
+              </div>
+            ) : null
+          )}
+          <Separator className="my-1.5" />
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-gray-700">Total a cobrar</span>
+            <span className="text-base font-bold text-gray-900">{formatCurrency(total, currency)}</span>
+          </div>
+        </div>
+
+        {/* Extras editables del mes */}
+        <div className="mt-4">
+          <ExtrasFields
+            control={control}
+            register={register}
+            title="Extras del mes"
+            hint="Editá el monto de cada extra para este pago (o agregá/sacá alguno). No se les aplica comisión: pasan al dueño."
+          />
+        </div>
+
         <Separator className="my-4" />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

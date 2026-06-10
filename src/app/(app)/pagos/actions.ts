@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { registerPaymentSchema, type RegisterPaymentValues } from "@/lib/validators/payment";
 import { calculateCommission } from "@/lib/payments/commission";
 import { generateMonthlyPayments } from "@/lib/payments/generate";
+import { normalizeExtras, extrasTotal } from "@/lib/payments/extras";
 import { revalidatePath } from "next/cache";
 
 export async function getPayments(filters: {
@@ -78,7 +79,7 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
   // Get payment + contract info for commission calc
   const { data: payment, error: payErr } = await supabase
     .from("payments")
-    .select("contract_id, amount_due, contract:contracts(commission_percentage, agency_collects)")
+    .select("contract_id, amount_due, extras, contract:contracts(commission_percentage, agency_collects)")
     .eq("id", paymentId)
     .single();
   if (payErr) throw payErr;
@@ -86,15 +87,23 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
   const contractData = payment.contract;
   const contract = (Array.isArray(contractData) ? contractData[0] : contractData) as { commission_percentage: number; agency_collects: boolean } | null;
 
+  // Alquiler = total esperado original menos los extras que tenía el pago.
+  const rent = payment.amount_due - extrasTotal(payment.extras as { concept?: string; amount?: number }[] | null);
+  // Extras editados en el form → nuevo snapshot + nuevo total esperado.
+  const extras = normalizeExtras(parsed.extras);
+  const extrasT = extrasTotal(extras);
+  const newAmountDue = rent + extrasT;
+
   const { commission_amount, owner_payout } = calculateCommission({
     amount_paid: parsed.amount_paid,
     discount_amount: parsed.discount_amount,
     late_fee_amount: parsed.late_fee_amount,
     commission_percentage: contract?.commission_percentage ?? 0,
     agency_collects: contract?.agency_collects ?? false,
+    extras_total: extrasT,
   });
 
-  const isPaid = parsed.amount_paid >= payment.amount_due - parsed.discount_amount;
+  const isPaid = parsed.amount_paid >= newAmountDue - parsed.discount_amount;
 
   const { error } = await supabase
     .from("payments")
@@ -106,6 +115,8 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
       late_fee_amount: parsed.late_fee_amount,
       commission_amount,
       owner_payout,
+      amount_due: newAmountDue,
+      extras,
       status: isPaid ? "pagado" : "parcial",
       notes: parsed.notes || null,
     })
@@ -136,7 +147,7 @@ export async function quickCollectPayment(paymentId: string) {
 
   const { data: payment, error: payErr } = await supabase
     .from("payments")
-    .select("amount_due, contract_id, status, contract:contracts(commission_percentage, agency_collects)")
+    .select("amount_due, contract_id, status, extras, contract:contracts(commission_percentage, agency_collects)")
     .eq("id", paymentId)
     .single();
   if (payErr) throw payErr;
@@ -153,6 +164,7 @@ export async function quickCollectPayment(paymentId: string) {
     late_fee_amount: 0,
     commission_percentage: contract?.commission_percentage ?? 0,
     agency_collects: contract?.agency_collects ?? false,
+    extras_total: extrasTotal(payment.extras as { concept?: string; amount?: number }[] | null),
   });
 
   const { error } = await supabase

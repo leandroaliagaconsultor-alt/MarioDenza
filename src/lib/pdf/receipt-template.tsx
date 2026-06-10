@@ -57,6 +57,8 @@ interface ReceiptData {
   tenant: { full_name: string; dni?: string };
   owner: { full_name: string };
   period: string;
+  rent: string;
+  extras: { concept: string; amount: string }[];
   amountDue: string;
   amountPaid: string;
   discount?: string | null;
@@ -112,8 +114,14 @@ export function ReceiptDocument({ data }: { data: ReceiptData }) {
           </View>
           <View style={styles.lineItem}>
             <Text style={styles.liLabel}>Alquiler</Text>
-            <Text style={styles.liValue}>{data.amountDue}</Text>
+            <Text style={styles.liValue}>{data.rent}</Text>
           </View>
+          {data.extras.map((e, i) => (
+            <View key={i} style={styles.lineItem}>
+              <Text style={styles.liLabel}>{e.concept}</Text>
+              <Text style={styles.liValue}>{e.amount}</Text>
+            </View>
+          ))}
           {data.discount ? (
             <View style={styles.lineItem}>
               <Text style={styles.liLabel}>Descuento</Text>

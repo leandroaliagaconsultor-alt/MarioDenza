@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CURRENCY_TYPES, LEGAL_FRAMEWORKS, LATE_FEE_TYPES } from "@/lib/types/enums";
+import { ExtrasFields } from "@/components/forms/extras-fields";
 
 export function StepEconomic() {
-  const { register, watch, formState: { errors } } = useFormContext<ContractFormValues>();
+  const { register, watch, control, formState: { errors } } = useFormContext<ContractFormValues>();
   const lateFeeEnabled = watch("late_fee_enabled");
 
   return (
@@ -102,6 +103,11 @@ export function StepEconomic() {
           </div>
         )}
       </div>
+
+      <Separator />
+
+      {/* Extras */}
+      <ExtrasFields control={control} register={register} />
     </div>
   );
 }

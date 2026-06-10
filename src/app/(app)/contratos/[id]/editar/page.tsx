@@ -36,6 +36,7 @@ export default async function EditarContratoPage({ params }: Props) {
           late_fee_type: contract.late_fee_type,
           late_fee_value: contract.late_fee_value,
           notes: contract.notes ?? "",
+          extras: Array.isArray(contract.extras) ? contract.extras : [],
         }}
       />
     </div>

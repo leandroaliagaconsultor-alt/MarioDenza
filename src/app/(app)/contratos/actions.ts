@@ -5,6 +5,7 @@ import { contractFormSchema, type ContractFormValues } from "@/lib/validators/co
 import { revalidatePath } from "next/cache";
 import { calculateRetroactiveAdjustments, type RetroactiveResult } from "@/lib/indices/retroactive-calculator";
 import { getCachedIndex } from "@/lib/indices/cache";
+import { normalizeExtras } from "@/lib/payments/extras";
 
 export async function getContracts(search?: string, status?: string) {
   const supabase = await createClient();
@@ -116,6 +117,7 @@ export async function createContract(values: ContractFormValues & { retroactive_
       late_fee_value: parsed.late_fee_enabled ? parsed.late_fee_value : null,
       status: "activo",
       notes: parsed.notes || null,
+      extras: normalizeExtras(parsed.extras),
       previous_contract_id: values.renew_from || null,
     })
     .select("id")
@@ -206,6 +208,7 @@ export async function updateContract(id: string, values: {
   late_fee_type: string | null;
   late_fee_value: number | null;
   notes: string;
+  extras?: { concept: string; amount: number }[];
 }) {
   const supabase = await createClient();
   const { error } = await supabase
@@ -222,6 +225,7 @@ export async function updateContract(id: string, values: {
       late_fee_type: values.late_fee_enabled ? values.late_fee_type : null,
       late_fee_value: values.late_fee_enabled ? values.late_fee_value : null,
       notes: values.notes || null,
+      extras: normalizeExtras(values.extras),
     })
     .eq("id", id);
   if (error) throw error;

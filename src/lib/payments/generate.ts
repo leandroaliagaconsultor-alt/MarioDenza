@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { calculateCommission } from "./commission";
+import { normalizeExtras, extrasTotal } from "./extras";
 
 /**
  * Generates pending payments for all active contracts for a given month.
@@ -13,7 +14,7 @@ export async function generateMonthlyPayments(
   // Get all active contracts
   const { data: contracts, error: contractsErr } = await supabase
     .from("contracts")
-    .select("id, current_rent, payment_day, commission_percentage, agency_collects")
+    .select("id, current_rent, payment_day, commission_percentage, agency_collects, extras")
     .eq("status", "activo");
 
   if (contractsErr) throw contractsErr;
@@ -37,26 +38,34 @@ export async function generateMonthlyPayments(
       const day = Math.min(c.payment_day, lastDay);
       const due_date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
+      // Extras del contrato → snapshot del pago (monto editable al cobrar).
+      const extras = normalizeExtras(c.extras as { concept?: string; amount?: number }[] | null);
+      const extrasT = extrasTotal(extras);
+      const amount_due = c.current_rent + extrasT; // total esperado = alquiler + extras
+
       // Comisión y pago al dueño PROYECTADOS sobre el monto a cobrar.
       // Al cobrar se recalculan sobre el monto realmente pagado (descuentos/recargos).
+      // Los extras NO se comisionan: pasan enteros al dueño.
       const { commission_amount, owner_payout } = calculateCommission({
-        amount_paid: c.current_rent,
+        amount_paid: amount_due,
         discount_amount: 0,
         late_fee_amount: 0,
         commission_percentage: c.commission_percentage ?? 0,
         agency_collects: c.agency_collects ?? true,
+        extras_total: extrasT,
       });
 
       return {
         contract_id: c.id,
         period,
         due_date,
-        amount_due: c.current_rent,
+        amount_due,
         amount_paid: 0,
         discount_amount: 0,
         late_fee_amount: 0,
         commission_amount,
         owner_payout,
+        extras,
         status: "pendiente" as const,
       };
     });

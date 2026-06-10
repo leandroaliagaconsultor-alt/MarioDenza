@@ -5,6 +5,7 @@ import { ReceiptDocument } from "@/lib/pdf/receipt-template";
 import { PAYMENT_METHODS } from "@/lib/types/enums";
 import type { PaymentMethod } from "@/lib/types/enums";
 import { formatReceiptNumber, formatCurrency, formatDate } from "@/lib/utils/format";
+import { extrasTotal, type PaymentExtra } from "@/lib/payments/extras";
 import { loadLogoDataUri } from "@/lib/pdf/logo";
 import type { CurrencyType } from "@/lib/types/enums";
 import React from "react";
@@ -58,6 +59,9 @@ export async function GET(
   const currency = (contract?.currency ?? "ARS") as CurrencyType;
   const logo = await loadLogoDataUri(request.nextUrl.origin);
 
+  const extras = (Array.isArray(payment.extras) ? payment.extras : []) as PaymentExtra[];
+  const rent = payment.amount_due - extrasTotal(extras);
+
   const data = {
     logo,
     receiptNumber: formatReceiptNumber(receiptNumber),
@@ -74,6 +78,8 @@ export async function GET(
       full_name: owner?.full_name ?? "",
     },
     period: payment.period.substring(0, 7),
+    rent: formatCurrency(rent, currency),
+    extras: extras.map((e) => ({ concept: e.concept, amount: formatCurrency(e.amount, currency) })),
     amountDue: formatCurrency(payment.amount_due, currency),
     amountPaid: formatCurrency(payment.amount_paid, currency),
     discount: payment.discount_amount > 0 ? formatCurrency(payment.discount_amount, currency) : null,

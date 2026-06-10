@@ -12,6 +12,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { updateContract } from "../../actions";
 import { LEGAL_FRAMEWORKS, LATE_FEE_TYPES } from "@/lib/types/enums";
+import { ExtrasFields } from "@/components/forms/extras-fields";
 
 interface FormValues {
   start_date: string;
@@ -25,6 +26,7 @@ interface FormValues {
   late_fee_type: string | null;
   late_fee_value: number | null;
   notes: string;
+  extras: { concept: string; amount: number }[];
 }
 
 interface Props {
@@ -36,7 +38,7 @@ export function ContractEditForm({ contractId, defaultValues }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
+  const { register, handleSubmit, watch, setValue, control } = useForm<FormValues>({
     defaultValues,
   });
 
@@ -133,6 +135,10 @@ export function ContractEditForm({ contractId, defaultValues }: Props) {
             </div>
           </>
         )}
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
+        <ExtrasFields control={control} register={register} />
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">

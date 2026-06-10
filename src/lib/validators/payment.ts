@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { extrasArraySchema } from "./extras";
 
 export const registerPaymentSchema = z.object({
   amount_paid: z.number().positive("El monto debe ser mayor a 0"),
@@ -8,6 +9,7 @@ export const registerPaymentSchema = z.object({
   discount_reason: z.string(),
   late_fee_amount: z.number().min(0),
   notes: z.string(),
+  extras: extrasArraySchema,
 });
 
 export type RegisterPaymentValues = z.infer<typeof registerPaymentSchema>;

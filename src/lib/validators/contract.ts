@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { extrasArraySchema } from "./extras";
 
 export const contractFormSchema = z.object({
   // Step 1: Property
@@ -26,6 +27,9 @@ export const contractFormSchema = z.object({
   adjustment_frequency_months: z.number().int().positive().nullable(),
   adjustment_next_date: z.string().nullable(),
   adjustment_fixed_percentage: z.number().nullable(),
+
+  // Extras: conceptos adicionales (expensas, ABL, etc.) con monto opcional
+  extras: extrasArraySchema,
 
   // Step 5: Notes
   notes: z.string(),
@@ -55,5 +59,6 @@ export const contractDefaults: ContractFormValues = {
   adjustment_frequency_months: 3,
   adjustment_next_date: "",
   adjustment_fixed_percentage: null,
+  extras: [],
   notes: "",
 };
