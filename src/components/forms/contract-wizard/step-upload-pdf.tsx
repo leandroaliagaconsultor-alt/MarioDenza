@@ -101,18 +101,18 @@ export function StepUploadPdf({ properties, tenants, onExtracted, onSkip }: Prop
     <div className="space-y-5">
       <div className="text-center">
         <FileUp className="mx-auto h-12 w-12 text-gray-300" />
-        <h3 className="mt-3 text-sm font-semibold text-gray-900">Subi el PDF del contrato firmado</h3>
+        <h3 className="mt-3 text-sm font-semibold text-gray-900">Subí el contrato (PDF o Word)</h3>
         <p className="mt-1 text-sm text-gray-500">
           La IA va a analizar el documento y pre-llenar los datos automaticamente.
           <br />
-          Despues podes revisar y corregir todo antes de confirmar.
+          Acepta PDF o Word (.docx). Despues podes revisar y corregir todo antes de confirmar.
         </p>
       </div>
 
       <div className="flex flex-col items-center gap-4">
         <input
           type="file"
-          accept=".pdf"
+          accept=".pdf,.docx"
           onChange={(e) => { setFile(e.target.files?.[0] ?? null); setExtracted(null); setError(null); }}
           className="block text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-teal-700 hover:file:bg-teal-100"
         />
@@ -187,7 +187,7 @@ export function StepUploadPdf({ properties, tenants, onExtracted, onSkip }: Prop
 
       {!file && !extracted && (
         <p className="text-center text-xs text-gray-400">
-          No tenes el PDF? Podes omitir este paso y cargar los datos manualmente.
+          No tenés el archivo? Podés omitir este paso y cargar los datos manualmente.
         </p>
       )}
     </div>

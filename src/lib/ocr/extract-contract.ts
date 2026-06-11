@@ -46,6 +46,20 @@ Campos a extraer:
 
 Respondé SOLO con el JSON, sin markdown ni explicación.`;
 
+function parseExtraction(response: Anthropic.Message): ExtractedContractData {
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("No se recibió respuesta de texto");
+  }
+
+  let jsonStr = textBlock.text.trim();
+  if (jsonStr.startsWith("```")) {
+    jsonStr = jsonStr.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+  }
+
+  return JSON.parse(jsonStr) as ExtractedContractData;
+}
+
 export async function extractContractFromPdf(
   pdfBase64: string
 ): Promise<ExtractedContractData> {
@@ -75,15 +89,30 @@ export async function extractContractFromPdf(
     ],
   });
 
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No se recibió respuesta de texto");
-  }
+  return parseExtraction(response);
+}
 
-  let jsonStr = textBlock.text.trim();
-  if (jsonStr.startsWith("```")) {
-    jsonStr = jsonStr.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
-  }
+/** Extrae los datos a partir del texto plano del contrato (ej. un Word convertido a texto). */
+export async function extractContractFromText(
+  text: string
+): Promise<ExtractedContractData> {
+  const client = new Anthropic();
 
-  return JSON.parse(jsonStr) as ExtractedContractData;
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 2000,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `${EXTRACTION_PROMPT}\n\n--- TEXTO DEL CONTRATO ---\n${text}`,
+          },
+        ],
+      },
+    ],
+  });
+
+  return parseExtraction(response);
 }
