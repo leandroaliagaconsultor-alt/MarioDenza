@@ -2,6 +2,7 @@ import { z } from "zod";
 import { extrasArraySchema } from "./extras";
 
 export const registerPaymentSchema = z.object({
+  rent: z.number().min(0),
   amount_paid: z.number().positive("El monto debe ser mayor a 0"),
   paid_date: z.string().min(1, "La fecha de pago es obligatoria"),
   payment_method: z.enum(["efectivo", "transferencia", "mp", "cheque", "otro"]),

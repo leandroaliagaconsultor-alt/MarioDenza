@@ -37,9 +37,10 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
   const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<RegisterPaymentValues>({
     resolver: zodResolver(registerPaymentSchema),
     defaultValues: {
+      rent,
       amount_paid: initialTotal,
       paid_date: today,
-      payment_method: "transferencia",
+      payment_method: "efectivo",
       discount_amount: 0,
       discount_reason: "",
       late_fee_amount: suggestedLateFee,
@@ -49,8 +50,9 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
   });
 
   const watchedExtras = watch("extras");
+  const watchedRent = watch("rent");
   const extrasSum = (watchedExtras ?? []).reduce((s, e) => s + (Number(e?.amount) || 0), 0);
-  const total = rent + extrasSum;
+  const total = (Number(watchedRent) || 0) + extrasSum;
 
   // El monto pagado sigue al total a cobrar (alquiler + extras); igual queda editable para pagos parciales.
   useEffect(() => {
@@ -81,9 +83,21 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
 
         {/* Desglose: alquiler + extras = total */}
         <div className="space-y-1.5 rounded-lg bg-gray-50 p-4 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Alquiler</span>
-            <span className="font-medium text-gray-900">{formatCurrency(rent, currency)}</span>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="rent" className="text-gray-600">Alquiler</Label>
+            <Input
+              id="rent"
+              type="number"
+              step="0.01"
+              min={0}
+              className="h-8 w-44 text-right"
+              {...register("rent", {
+                setValueAs: (v: unknown) => {
+                  const n = Number(v);
+                  return Number.isFinite(n) ? n : 0;
+                },
+              })}
+            />
           </div>
           {(watchedExtras ?? []).map((e, i) =>
             e?.concept ? (

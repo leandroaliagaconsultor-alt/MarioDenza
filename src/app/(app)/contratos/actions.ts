@@ -5,7 +5,8 @@ import { contractFormSchema, type ContractFormValues } from "@/lib/validators/co
 import { revalidatePath } from "next/cache";
 import { calculateRetroactiveAdjustments, type RetroactiveResult } from "@/lib/indices/retroactive-calculator";
 import { getCachedIndex } from "@/lib/indices/cache";
-import { normalizeExtras } from "@/lib/payments/extras";
+import { normalizeExtras, extrasTotal } from "@/lib/payments/extras";
+import { calculateCommission } from "@/lib/payments/commission";
 
 export async function getContracts(search?: string, status?: string) {
   const supabase = await createClient();
@@ -229,8 +230,34 @@ export async function updateContract(id: string, values: {
     })
     .eq("id", id);
   if (error) throw error;
+
+  // Reflejar el nuevo alquiler en los pagos pendientes/vencidos (mantienen sus extras).
+  const { data: pendings } = await supabase
+    .from("payments")
+    .select("id, extras")
+    .eq("contract_id", id)
+    .in("status", ["pendiente", "vencido"]);
+  for (const p of pendings ?? []) {
+    const extrasT = extrasTotal(p.extras as { concept?: string; amount?: number }[] | null);
+    const amount_due = values.current_rent + extrasT;
+    const { commission_amount, owner_payout } = calculateCommission({
+      amount_paid: amount_due,
+      discount_amount: 0,
+      late_fee_amount: 0,
+      commission_percentage: values.commission_percentage,
+      agency_collects: values.agency_collects,
+      extras_total: extrasT,
+    });
+    await supabase
+      .from("payments")
+      .update({ amount_due, commission_amount, owner_payout })
+      .eq("id", p.id);
+  }
+
   revalidatePath(`/contratos/${id}`);
   revalidatePath("/contratos");
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
 }
 
 export async function finalizeContract(id: string) {

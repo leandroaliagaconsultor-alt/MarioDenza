@@ -8,6 +8,7 @@ import type { PaymentStatus, CurrencyType, PaymentMethod } from "@/lib/types/enu
 import { formatCurrency, formatDate, formatReceiptNumber } from "@/lib/utils/format";
 import { extrasTotal, type PaymentExtra } from "@/lib/payments/extras";
 import { RegisterPaymentForm } from "./register-form";
+import { RevertPaymentButton } from "./revert-button";
 import Link from "next/link";
 import { Building2, UserCheck, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,7 @@ export default async function PaymentDetailPage({ params }: Props) {
                 </Button>
               </a>
             )}
+            {!isPending && <RevertPaymentButton paymentId={id} />}
             <StatusBadge
               label={PAYMENT_STATUSES[payment.status as PaymentStatus]}
               colorClass={PAYMENT_STATUS_COLORS[payment.status as PaymentStatus]}

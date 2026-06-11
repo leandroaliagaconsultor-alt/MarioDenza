@@ -79,7 +79,7 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
   // Get payment + contract info for commission calc
   const { data: payment, error: payErr } = await supabase
     .from("payments")
-    .select("contract_id, amount_due, extras, contract:contracts(commission_percentage, agency_collects)")
+    .select("contract_id, contract:contracts(commission_percentage, agency_collects)")
     .eq("id", paymentId)
     .single();
   if (payErr) throw payErr;
@@ -87,12 +87,10 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
   const contractData = payment.contract;
   const contract = (Array.isArray(contractData) ? contractData[0] : contractData) as { commission_percentage: number; agency_collects: boolean } | null;
 
-  // Alquiler = total esperado original menos los extras que tenía el pago.
-  const rent = payment.amount_due - extrasTotal(payment.extras as { concept?: string; amount?: number }[] | null);
-  // Extras editados en el form → nuevo snapshot + nuevo total esperado.
+  // Alquiler (editable en el form) + extras editados → nuevo total esperado.
   const extras = normalizeExtras(parsed.extras);
   const extrasT = extrasTotal(extras);
-  const newAmountDue = rent + extrasT;
+  const newAmountDue = parsed.rent + extrasT;
 
   const { commission_amount, owner_payout } = calculateCommission({
     amount_paid: parsed.amount_paid,
@@ -139,6 +137,55 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
   revalidatePath("/pagos");
   revalidatePath(`/pagos/${paymentId}`);
   revalidatePath(`/contratos/${payment.contract_id}`);
+}
+
+/** Deshace un pago cobrado por error: vuelve a "pendiente" y limpia los datos del cobro. */
+export async function revertPayment(paymentId: string) {
+  const supabase = await createClient();
+
+  const { data: payment, error: payErr } = await supabase
+    .from("payments")
+    .select("contract_id, amount_due, extras, contract:contracts(commission_percentage, agency_collects)")
+    .eq("id", paymentId)
+    .single();
+  if (payErr) throw payErr;
+
+  const contractData = payment.contract;
+  const contract = (Array.isArray(contractData) ? contractData[0] : contractData) as
+    | { commission_percentage: number; agency_collects: boolean }
+    | null;
+
+  // Comisión/owner vuelven a quedar proyectados (como pago pendiente) sobre el monto esperado.
+  const extrasT = extrasTotal(payment.extras as { concept?: string; amount?: number }[] | null);
+  const { commission_amount, owner_payout } = calculateCommission({
+    amount_paid: payment.amount_due,
+    discount_amount: 0,
+    late_fee_amount: 0,
+    commission_percentage: contract?.commission_percentage ?? 0,
+    agency_collects: contract?.agency_collects ?? true,
+    extras_total: extrasT,
+  });
+
+  const { error } = await supabase
+    .from("payments")
+    .update({
+      status: "pendiente",
+      amount_paid: 0,
+      paid_date: null,
+      payment_method: null,
+      discount_amount: 0,
+      late_fee_amount: 0,
+      commission_amount,
+      owner_payout,
+    })
+    .eq("id", paymentId);
+  if (error) throw error;
+
+  revalidatePath("/pagos");
+  revalidatePath(`/pagos/${paymentId}`);
+  revalidatePath(`/contratos/${payment.contract_id}`);
+  revalidatePath("/liquidaciones");
+  revalidatePath("/dashboard");
 }
 
 /** Cobro rápido: registra el pago completo con defaults (hoy · efectivo · monto completo). */
