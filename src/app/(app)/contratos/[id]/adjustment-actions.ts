@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { addMonths, format } from "date-fns";
+import { calculateCommission } from "@/lib/payments/commission";
+import { extrasTotal } from "@/lib/payments/extras";
 import {
   cyclePeriods,
   computeAdjustment,
@@ -121,7 +123,7 @@ export async function applyAdjustment(
 
     const { data: contract } = await supabase
       .from("contracts")
-      .select("current_rent")
+      .select("current_rent, commission_percentage, agency_collects")
       .eq("id", contractId)
       .single();
     if (!contract) return { error: "Contrato no encontrado" };
@@ -161,6 +163,29 @@ export async function applyAdjustment(
       .update({ current_rent: input.finalRent })
       .eq("id", contractId);
     if (contractErr) throw contractErr;
+
+    // Reflejar el nuevo alquiler en los pagos pendientes/vencidos (mantienen sus extras).
+    const { data: pendings } = await supabase
+      .from("payments")
+      .select("id, extras")
+      .eq("contract_id", contractId)
+      .in("status", ["pendiente", "vencido"]);
+    for (const p of pendings ?? []) {
+      const extrasT = extrasTotal(p.extras as { amount?: number }[] | null);
+      const amount_due = input.finalRent + extrasT;
+      const { commission_amount, owner_payout } = calculateCommission({
+        amount_paid: amount_due,
+        discount_amount: 0,
+        late_fee_amount: 0,
+        commission_percentage: (contract.commission_percentage as number) ?? 0,
+        agency_collects: (contract.agency_collects as boolean) ?? true,
+        extras_total: extrasT,
+      });
+      await supabase
+        .from("payments")
+        .update({ amount_due, commission_amount, owner_payout })
+        .eq("id", p.id);
+    }
 
     if (adjConfig) {
       const nextDate = addMonths(new Date(adjConfig.next_adjustment_date as string), adjConfig.frequency_months as number);
