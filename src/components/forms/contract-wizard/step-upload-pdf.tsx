@@ -14,9 +14,10 @@ interface Props {
   tenants: { id: string; full_name: string; dni: string | null }[];
   onExtracted: (data: ExtractedContractData) => void;
   onSkip: () => void;
+  renewing?: boolean;
 }
 
-export function StepUploadPdf({ properties, tenants, onExtracted, onSkip }: Props) {
+export function StepUploadPdf({ properties, tenants, onExtracted, onSkip, renewing = false }: Props) {
   const { setValue } = useFormContext<ContractFormValues>();
   const [file, setFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
@@ -101,9 +102,13 @@ export function StepUploadPdf({ properties, tenants, onExtracted, onSkip }: Prop
     <div className="space-y-5">
       <div className="text-center">
         <FileUp className="mx-auto h-12 w-12 text-gray-300" />
-        <h3 className="mt-3 text-sm font-semibold text-gray-900">Subí el contrato (PDF o Word)</h3>
+        <h3 className="mt-3 text-sm font-semibold text-gray-900">
+          {renewing ? "Subí el contrato NUEVO de la renovación (PDF o Word)" : "Subí el contrato (PDF o Word)"}
+        </h3>
         <p className="mt-1 text-sm text-gray-500">
-          La IA va a analizar el documento y pre-llenar los datos automaticamente.
+          {renewing
+            ? "La propiedad y el inquilino ya vienen cargados. Subí el contrato nuevo y la IA toma los datos actualizados (monto, fechas, índice)."
+            : "La IA va a analizar el documento y pre-llenar los datos automaticamente."}
           <br />
           Acepta PDF o Word (.docx). Despues podes revisar y corregir todo antes de confirmar.
         </p>

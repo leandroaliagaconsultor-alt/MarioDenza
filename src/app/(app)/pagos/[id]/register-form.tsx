@@ -25,20 +25,22 @@ interface Props {
   currency: CurrencyType;
   suggestedLateFee?: number;
   initialExtras?: PaymentExtra[];
+  alreadyPaid?: number; // ya pagado a cuenta (pagos parciales previos)
 }
 
-export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFee = 0, initialExtras = [] }: Props) {
+export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFee = 0, initialExtras = [], alreadyPaid = 0 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
   const initialTotal = rent + initialExtras.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const initialSaldo = Math.max(0, initialTotal - alreadyPaid);
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<RegisterPaymentValues>({
     resolver: zodResolver(registerPaymentSchema),
     defaultValues: {
       rent,
-      amount_paid: initialTotal,
+      amount_paid: initialSaldo, // por defecto cobra el saldo (o el total si no hay nada pagado)
       paid_date: today,
       payment_method: "efectivo",
       discount_amount: 0,
@@ -53,17 +55,21 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
   const watchedRent = watch("rent");
   const extrasSum = (watchedExtras ?? []).reduce((s, e) => s + (Number(e?.amount) || 0), 0);
   const total = (Number(watchedRent) || 0) + extrasSum;
+  const saldoAntes = Math.max(0, total - alreadyPaid);
 
-  // El monto pagado sigue al total a cobrar (alquiler + extras); igual queda editable para pagos parciales.
+  // El "paga ahora" sigue al saldo restante; igual queda editable (puede pagar menos = a cuenta).
   useEffect(() => {
-    setValue("amount_paid", total);
-  }, [total, setValue]);
+    setValue("amount_paid", saldoAntes);
+  }, [saldoAntes, setValue]);
+
+  const pagaAhora = Number(watch("amount_paid")) || 0;
+  const saldoDespues = total - alreadyPaid - pagaAhora;
 
   async function onSubmit(values: RegisterPaymentValues) {
     setLoading(true);
     try {
       await registerPayment(paymentId, values);
-      toast.success("Pago registrado correctamente");
+      toast.success(saldoDespues > 0 ? "Pago a cuenta registrado" : "Pago registrado correctamente");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al registrar pago");
@@ -112,6 +118,12 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
             <span className="font-semibold text-gray-700">Total a cobrar</span>
             <span className="text-base font-bold text-gray-900">{formatCurrency(total, currency)}</span>
           </div>
+          {alreadyPaid > 0 && (
+            <div className="flex items-center justify-between text-emerald-700">
+              <span>Ya pagado a cuenta</span>
+              <span>− {formatCurrency(alreadyPaid, currency)}</span>
+            </div>
+          )}
         </div>
 
         {/* Extras editables del mes */}
@@ -128,9 +140,14 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="amount_paid">Monto pagado *</Label>
+            <Label htmlFor="amount_paid">Monto que paga ahora *</Label>
             <Input id="amount_paid" type="number" step="0.01" {...register("amount_paid", { valueAsNumber: true })} className="mt-1" />
             {errors.amount_paid && <p className="mt-1 text-sm text-red-500">{errors.amount_paid.message}</p>}
+            <p className={`mt-1 text-xs ${saldoDespues > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+              {saldoDespues > 0
+                ? `Queda un saldo de ${formatCurrency(saldoDespues, currency)} (el mes sigue como "parcial").`
+                : "Con este pago queda saldado el mes."}
+            </p>
           </div>
           <div>
             <Label htmlFor="paid_date">Fecha de pago *</Label>
@@ -165,7 +182,7 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
         <div className="mt-6 flex justify-end">
           <Button type="submit" disabled={loading} className="bg-teal-600 hover:bg-teal-700">
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Registrar pago
+            {saldoDespues > 0 ? "Registrar pago a cuenta" : "Registrar pago"}
           </Button>
         </div>
       </div>

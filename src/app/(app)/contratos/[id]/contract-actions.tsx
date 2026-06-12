@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { finalizeContract } from "../actions";
+import { finalizeContract, deleteContract } from "../actions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckCircle, RefreshCw } from "lucide-react";
+import { CheckCircle, RefreshCw, Trash2 } from "lucide-react";
 
 interface Props {
   contractId: string;
@@ -22,6 +22,7 @@ interface Props {
 export function ContractActions({ contractId, propertyId, tenantId, currentRent, currency, endDate, adjustmentIndexType, adjustmentFrequency }: Props) {
   const [showFinalize, setShowFinalize] = useState(false);
   const [showRenew, setShowRenew] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const router = useRouter();
 
   const renewParams = new URLSearchParams({
@@ -41,6 +42,9 @@ export function ContractActions({ contractId, propertyId, tenantId, currentRent,
       </Button>
       <Button variant="outline" size="sm" onClick={() => setShowFinalize(true)}>
         <CheckCircle className="mr-1 h-4 w-4" /> Finalizar
+      </Button>
+      <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50" onClick={() => setShowDelete(true)}>
+        <Trash2 className="mr-1 h-4 w-4" /> Borrar
       </Button>
 
       <ConfirmDialog
@@ -69,6 +73,24 @@ export function ContractActions({ contractId, propertyId, tenantId, currentRent,
             router.refresh();
           } catch (err) {
             toast.error(err instanceof Error ? err.message : "Error");
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={showDelete}
+        onOpenChange={setShowDelete}
+        title="Borrar contrato definitivamente"
+        description="Esto elimina el contrato, sus pagos y recibos, y —si quedan sin uso— también la propiedad, el dueño y el inquilino. Es PERMANENTE y no se puede deshacer. Usalo solo para limpiar duplicados."
+        confirmText="Borrar definitivamente"
+        variant="destructive"
+        onConfirm={async () => {
+          try {
+            await deleteContract(contractId);
+            toast.success("Contrato borrado");
+            router.push("/contratos");
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Error al borrar");
           }
         }}
       />

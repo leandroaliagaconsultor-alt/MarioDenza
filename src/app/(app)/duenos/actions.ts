@@ -72,7 +72,7 @@ export async function getOwnerProperties(ownerId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("properties")
-    .select("id, address, unit, city, type, status, contracts:contracts(id, tenant:tenants(full_name), current_rent, currency, status)")
+    .select("id, address, unit, city, type, status, contracts:contracts(id, tenant:tenants(full_name), current_rent, currency, status, start_date, end_date)")
     .eq("owner_id", ownerId)
     .is("deleted_at", null)
     .order("address");

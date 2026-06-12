@@ -50,6 +50,10 @@ const styles = StyleSheet.create({
   totalLabel: { color: C.white, fontSize: 9.5, letterSpacing: 1, fontFamily: "Helvetica-Bold" },
   totalValue: { color: C.white, fontSize: 13, fontFamily: "Helvetica-Bold" },
 
+  balanceRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 6, paddingHorizontal: 4 },
+  balanceLabel: { fontSize: 8.5, color: "#B45309", fontFamily: "Helvetica-Bold" },
+  balanceValue: { fontSize: 9.5, color: "#B45309", fontFamily: "Helvetica-Bold" },
+
   slipFooter: { marginTop: 8, borderTop: `1 solid ${C.line}`, paddingTop: 5 },
   footerText: { fontSize: 7, color: C.muted, marginTop: 1 },
 
@@ -69,6 +73,7 @@ interface ReceiptData {
   extras: { concept: string; amount: string }[];
   amountDue: string;
   amountPaid: string;
+  balance?: string | null;
   discount?: string | null;
   lateFee?: string | null;
   paymentMethod: string;
@@ -152,9 +157,16 @@ function Slip({ data, copyLabel, copySub }: { data: ReceiptData; copyLabel: stri
 
       {/* Total */}
       <View style={styles.totalBand}>
-        <Text style={styles.totalLabel}>TOTAL PAGADO</Text>
+        <Text style={styles.totalLabel}>{data.balance ? "PAGADO A CUENTA" : "TOTAL PAGADO"}</Text>
         <Text style={styles.totalValue}>{data.amountPaid}</Text>
       </View>
+
+      {data.balance ? (
+        <View style={styles.balanceRow}>
+          <Text style={styles.balanceLabel}>Saldo pendiente</Text>
+          <Text style={styles.balanceValue}>{data.balance}</Text>
+        </View>
+      ) : null}
 
       {/* Footer */}
       <View style={styles.slipFooter}>

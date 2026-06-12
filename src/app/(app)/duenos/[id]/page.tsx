@@ -11,7 +11,7 @@ import { PROPERTY_STATUSES, PROPERTY_STATUS_COLORS, PROPERTY_TYPES, CONTRACT_STA
 import { DocumentUpload } from "@/components/ui/document-upload";
 import { getDocuments } from "@/lib/documents/actions";
 import type { PropertyStatus, PropertyType, ContractStatus, CurrencyType } from "@/lib/types/enums";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -122,14 +122,15 @@ export default async function DuenoDetailPage({ params }: Props) {
         ) : (
           <div className="space-y-3">
             {properties.map((prop) => {
-              const contracts = (prop.contracts || []) as {
+              const contracts = ((prop.contracts || []) as {
                 id: string;
                 tenant: { full_name: string } | { full_name: string }[] | null;
                 current_rent: number;
                 currency: string;
                 status: string;
-              }[];
-              const activeContract = contracts.find((c) => c.status === "activo" || c.status === "por_vencer");
+                start_date: string;
+                end_date: string;
+              }[]).slice().sort((a, b) => (b.start_date ?? "").localeCompare(a.start_date ?? ""));
 
               return (
                 <div key={prop.id} className="rounded-lg border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/50">
@@ -149,34 +150,35 @@ export default async function DuenoDetailPage({ params }: Props) {
                     />
                   </div>
 
-                  {activeContract && (() => {
-                    const tenantData = activeContract.tenant;
-                    const tenant = Array.isArray(tenantData) ? tenantData[0] : tenantData;
-                    return (
-                      <div className="mt-3 flex items-center justify-between rounded-md bg-gray-50 px-3 py-2">
-                        <div className="text-sm">
-                          <span className="text-gray-500">Inquilino: </span>
-                          <Link href={`/contratos/${activeContract.id}`} className="font-medium text-gray-700 hover:text-teal-600">
-                            {tenant?.full_name ?? "—"}
-                          </Link>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">
-                            {formatCurrency(activeContract.current_rent, activeContract.currency as CurrencyType)}
-                          </span>
-                          <StatusBadge
-                            label={CONTRACT_STATUSES[activeContract.status as ContractStatus]}
-                            colorClass={CONTRACT_STATUS_COLORS[activeContract.status as ContractStatus]}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {!activeContract && contracts.length > 0 && (
-                    <p className="mt-2 text-xs text-gray-400">
-                      {contracts.length} contrato{contracts.length > 1 ? "s" : ""} anterior{contracts.length > 1 ? "es" : ""}
-                    </p>
+                  {contracts.length === 0 ? (
+                    <p className="mt-2 text-xs text-gray-400">Sin contratos</p>
+                  ) : (
+                    <div className="mt-3 space-y-1.5">
+                      {contracts.map((c) => {
+                        const tenantData = c.tenant;
+                        const tenant = Array.isArray(tenantData) ? tenantData[0] : tenantData;
+                        const isActive = c.status === "activo" || c.status === "por_vencer";
+                        return (
+                          <div key={c.id} className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 ${isActive ? "bg-teal-50/70 ring-1 ring-teal-100" : "bg-gray-50"}`}>
+                            <div className="min-w-0">
+                              <Link href={`/contratos/${c.id}`} className="text-sm font-medium text-gray-700 hover:text-teal-600">
+                                {tenant?.full_name ?? "—"}
+                              </Link>
+                              <p className="text-xs text-gray-400">
+                                {c.start_date ? formatDate(c.start_date) : "—"} – {c.end_date ? formatDate(c.end_date) : "—"}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <span className="text-sm font-medium text-gray-900">{formatCurrency(c.current_rent, c.currency as CurrencyType)}</span>
+                              <StatusBadge
+                                label={CONTRACT_STATUSES[c.status as ContractStatus]}
+                                colorClass={CONTRACT_STATUS_COLORS[c.status as ContractStatus]}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               );

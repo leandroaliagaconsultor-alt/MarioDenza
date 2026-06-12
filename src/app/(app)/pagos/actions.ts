@@ -79,7 +79,7 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
   // Get payment + contract info for commission calc
   const { data: payment, error: payErr } = await supabase
     .from("payments")
-    .select("contract_id, contract:contracts(commission_percentage, agency_collects)")
+    .select("contract_id, amount_paid, contract:contracts(commission_percentage, agency_collects)")
     .eq("id", paymentId)
     .single();
   if (payErr) throw payErr;
@@ -92,8 +92,13 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
   const extrasT = extrasTotal(extras);
   const newAmountDue = parsed.rent + extrasT;
 
+  // "Monto que paga ahora" se SUMA a lo ya pagado a cuenta (pagos parciales).
+  const alreadyPaid = Number(payment.amount_paid) || 0;
+  const newTotalPaid = alreadyPaid + parsed.amount_paid;
+
+  // Comisión/owner sobre el total del alquiler (no sobre lo parcial); el dueño se liquida aparte.
   const { commission_amount, owner_payout } = calculateCommission({
-    amount_paid: parsed.amount_paid,
+    amount_paid: newAmountDue,
     discount_amount: parsed.discount_amount,
     late_fee_amount: parsed.late_fee_amount,
     commission_percentage: contract?.commission_percentage ?? 0,
@@ -101,12 +106,13 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
     extras_total: extrasT,
   });
 
-  const isPaid = parsed.amount_paid >= newAmountDue - parsed.discount_amount;
+  const isPaid = newTotalPaid >= newAmountDue - parsed.discount_amount;
+  const status = isPaid ? "pagado" : newTotalPaid > 0 ? "parcial" : "pendiente";
 
   const { error } = await supabase
     .from("payments")
     .update({
-      amount_paid: parsed.amount_paid,
+      amount_paid: newTotalPaid,
       paid_date: parsed.paid_date,
       payment_method: parsed.payment_method,
       discount_amount: parsed.discount_amount,
@@ -115,7 +121,7 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
       owner_payout,
       amount_due: newAmountDue,
       extras,
-      status: isPaid ? "pagado" : "parcial",
+      status,
       notes: parsed.notes || null,
     })
     .eq("id", paymentId);

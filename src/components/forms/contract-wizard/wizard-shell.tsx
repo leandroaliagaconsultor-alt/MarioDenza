@@ -145,6 +145,7 @@ export function WizardShell({ properties: initialProperties, tenants: initialTen
               tenants={tenants}
               onExtracted={setOcrData}
               onSkip={goNext}
+              renewing={!!renewFrom}
             />
           )}
           {step === 1 && (

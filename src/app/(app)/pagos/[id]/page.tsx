@@ -32,6 +32,10 @@ export default async function PaymentDetailPage({ params }: Props) {
   } | null;
   const currency = (contract?.currency ?? "ARS") as CurrencyType;
   const isPending = payment.status === "pendiente" || payment.status === "vencido";
+  const isPartial = payment.status === "parcial";
+  const isCollectible = isPending || isPartial;
+  const hasPaid = (payment.amount_paid ?? 0) > 0;
+  const balance = payment.amount_due - (payment.amount_paid ?? 0);
 
   // Extras del pago + alquiler (= total esperado menos extras)
   const extras = (Array.isArray(payment.extras) ? payment.extras : []) as PaymentExtra[];
@@ -58,25 +62,25 @@ export default async function PaymentDetailPage({ params }: Props) {
         backHref="/pagos"
         action={
           <div className="flex items-center gap-2">
-            {isPending && contract?.tenant?.phone && (
+            {isCollectible && contract?.tenant?.phone && (
               <WhatsAppOverdueButton
                 phone={contract.tenant.phone}
                 tenantName={contract.tenant.full_name ?? ""}
                 propertyAddress={`${contract.property?.address ?? ""}${contract.property?.unit ? ` - ${contract.property.unit}` : ""}`}
                 period={payment.period.substring(0, 7)}
-                amount={String(payment.amount_due)}
+                amount={String(isPartial ? balance : payment.amount_due)}
                 currency={contract.currency ?? "ARS"}
                 dueDate={formatDate(payment.due_date)}
               />
             )}
-            {!isPending && (
+            {hasPaid && (
               <a href={`/api/receipt/${id}`} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" size="sm">
                   <FileDown className="mr-1 h-4 w-4" /> Recibo PDF
                 </Button>
               </a>
             )}
-            {!isPending && <RevertPaymentButton paymentId={id} />}
+            {hasPaid && <RevertPaymentButton paymentId={id} />}
             <StatusBadge
               label={PAYMENT_STATUSES[payment.status as PaymentStatus]}
               colorClass={PAYMENT_STATUS_COLORS[payment.status as PaymentStatus]}
@@ -129,8 +133,15 @@ export default async function PaymentDetailPage({ params }: Props) {
         )}
       </div>
 
+      {/* Pago parcial: aviso de saldo */}
+      {isPartial && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <span className="font-semibold">Pago parcial.</span> Ya pagó {formatCurrency(payment.amount_paid, currency)} de {formatCurrency(payment.amount_due, currency)}. Saldo pendiente: <span className="font-semibold">{formatCurrency(balance, currency)}</span>. Registrá abajo el resto cuando lo abone.
+        </div>
+      )}
+
       {/* Payment details if already paid */}
-      {!isPending && (
+      {payment.status === "pagado" && (
         <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-700">Detalle del pago</h2>
           <Separator className="my-3" />
@@ -198,13 +209,14 @@ export default async function PaymentDetailPage({ params }: Props) {
       )}
 
       {/* Register payment form */}
-      {isPending && (
+      {isCollectible && (
         <RegisterPaymentForm
           paymentId={id}
           rent={rent}
           currency={currency}
           suggestedLateFee={suggestedLateFee}
           initialExtras={extras}
+          alreadyPaid={payment.amount_paid}
         />
       )}
     </div>

@@ -61,6 +61,7 @@ export async function GET(
 
   const extras = (Array.isArray(payment.extras) ? payment.extras : []) as PaymentExtra[];
   const rent = payment.amount_due - extrasTotal(extras);
+  const balanceNum = payment.amount_due - (payment.amount_paid ?? 0);
 
   const data = {
     logo,
@@ -82,6 +83,7 @@ export async function GET(
     extras: extras.map((e) => ({ concept: e.concept, amount: formatCurrency(e.amount, currency) })),
     amountDue: formatCurrency(payment.amount_due, currency),
     amountPaid: formatCurrency(payment.amount_paid, currency),
+    balance: balanceNum > 0 ? formatCurrency(balanceNum, currency) : null,
     discount: payment.discount_amount > 0 ? formatCurrency(payment.discount_amount, currency) : null,
     lateFee: payment.late_fee_amount > 0 ? formatCurrency(payment.late_fee_amount, currency) : null,
     paymentMethod: payment.payment_method

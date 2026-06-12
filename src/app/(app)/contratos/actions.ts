@@ -288,6 +288,79 @@ export async function finalizeContract(id: string) {
   revalidatePath("/propiedades");
 }
 
+/**
+ * Borra DEFINITIVAMENTE un contrato (para limpiar duplicados): elimina sus pagos, recibos,
+ * ajustes y co-inquilinos, y si quedan huérfanos también la propiedad, el dueño y el/los
+ * inquilino(s). Es permanente. Pensado para corregir cargas duplicadas.
+ */
+export async function deleteContract(contractId: string) {
+  const supabase = await createClient();
+
+  const { data: contract } = await supabase
+    .from("contracts")
+    .select("id, property_id, tenant_id")
+    .eq("id", contractId)
+    .single();
+  if (!contract) throw new Error("Contrato no encontrado");
+
+  // Inquilinos del contrato (principal + co-inquilinos)
+  const { data: cts } = await supabase
+    .from("contract_tenants")
+    .select("tenant_id")
+    .eq("contract_id", contractId);
+  const tenantIds = [...new Set<string>([contract.tenant_id, ...(cts ?? []).map((c) => c.tenant_id as string)].filter(Boolean))];
+
+  // Descuentos de los pagos de este contrato (FK a payments)
+  const { data: pays } = await supabase.from("payments").select("id").eq("contract_id", contractId);
+  const payIds = (pays ?? []).map((p) => p.id);
+  if (payIds.length > 0) await supabase.from("discounts").delete().in("payment_id", payIds);
+
+  // Dependientes del contrato → contrato
+  await supabase.from("adjustment_history").delete().eq("contract_id", contractId);
+  await supabase.from("contract_adjustments").delete().eq("contract_id", contractId);
+  await supabase.from("contract_tenants").delete().eq("contract_id", contractId);
+  await supabase.from("payments").delete().eq("contract_id", contractId);
+  const { error: cErr } = await supabase.from("contracts").delete().eq("id", contractId);
+  if (cErr) throw cErr;
+
+  // Propiedad: si no queda ningún contrato, se borra (y recordamos el dueño)
+  let ownerId: string | null = null;
+  if (contract.property_id) {
+    const { data: prop } = await supabase.from("properties").select("owner_id").eq("id", contract.property_id).single();
+    ownerId = (prop?.owner_id as string | undefined) ?? null;
+    const { count: otherContracts } = await supabase
+      .from("contracts").select("id", { count: "exact", head: true }).eq("property_id", contract.property_id);
+    if ((otherContracts ?? 0) === 0) {
+      await supabase.from("properties").delete().eq("id", contract.property_id);
+    }
+  }
+
+  // Dueño: si no le quedan propiedades, se borra
+  if (ownerId) {
+    const { count: ownerProps } = await supabase
+      .from("properties").select("id", { count: "exact", head: true }).eq("owner_id", ownerId);
+    if ((ownerProps ?? 0) === 0) {
+      await supabase.from("owners").delete().eq("id", ownerId);
+    }
+  }
+
+  // Inquilinos: cada uno, si no está en ningún otro contrato, se borra
+  for (const tid of tenantIds) {
+    const { count: asMain } = await supabase.from("contracts").select("id", { count: "exact", head: true }).eq("tenant_id", tid);
+    const { count: asCo } = await supabase.from("contract_tenants").select("contract_id", { count: "exact", head: true }).eq("tenant_id", tid);
+    if ((asMain ?? 0) === 0 && (asCo ?? 0) === 0) {
+      await supabase.from("tenants").delete().eq("id", tid);
+    }
+  }
+
+  revalidatePath("/contratos");
+  revalidatePath("/propiedades");
+  revalidatePath("/duenos");
+  revalidatePath("/inquilinos");
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+}
+
 export async function getAvailableProperties() {
   const supabase = await createClient();
   const { data, error } = await supabase
