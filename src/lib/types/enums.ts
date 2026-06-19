@@ -59,6 +59,8 @@ export const INDEX_TYPES = {
   ICL: "ICL (BCRA)",
   IPC: "IPC (INDEC)",
   casa_propia: "Casa Propia",
+  mixto: "Mixto (ICL/IPC)",
+  escalonado: "Escalonado (tramos pactados)",
   fixed_percentage: "Porcentaje fijo",
   custom: "Otro / Manual",
 } as const;

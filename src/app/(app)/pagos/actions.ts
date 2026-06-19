@@ -151,20 +151,23 @@ export async function revertPayment(paymentId: string) {
 
   const { data: payment, error: payErr } = await supabase
     .from("payments")
-    .select("contract_id, amount_due, extras, contract:contracts(commission_percentage, agency_collects)")
+    .select("contract_id, amount_due, extras, contract:contracts(commission_percentage, agency_collects, current_rent)")
     .eq("id", paymentId)
     .single();
   if (payErr) throw payErr;
 
   const contractData = payment.contract;
   const contract = (Array.isArray(contractData) ? contractData[0] : contractData) as
-    | { commission_percentage: number; agency_collects: boolean }
+    | { commission_percentage: number; agency_collects: boolean; current_rent: number }
     | null;
 
-  // Comisión/owner vuelven a quedar proyectados (como pago pendiente) sobre el monto esperado.
+  // Al deshacer, el pago vuelve a "por cobrar" con el alquiler VIGENTE del contrato
+  // (no el monto viejo que tenía). Así corrige automáticamente si el alquiler cambió
+  // después de haberse cobrado. Se mantienen los extras del propio pago.
   const extrasT = extrasTotal(payment.extras as { concept?: string; amount?: number }[] | null);
+  const amount_due = contract ? contract.current_rent + extrasT : payment.amount_due;
   const { commission_amount, owner_payout } = calculateCommission({
-    amount_paid: payment.amount_due,
+    amount_paid: amount_due,
     discount_amount: 0,
     late_fee_amount: 0,
     commission_percentage: contract?.commission_percentage ?? 0,
@@ -176,6 +179,7 @@ export async function revertPayment(paymentId: string) {
     .from("payments")
     .update({
       status: "pendiente",
+      amount_due,
       amount_paid: 0,
       paid_date: null,
       payment_method: null,

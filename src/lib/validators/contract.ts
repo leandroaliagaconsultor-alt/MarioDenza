@@ -23,10 +23,14 @@ export const contractFormSchema = z.object({
   late_fee_value: z.number().nullable(),
 
   // Step 4: Adjustment config
-  adjustment_index_type: z.enum(["ICL", "IPC", "casa_propia", "fixed_percentage", "custom"]).nullable(),
+  adjustment_index_type: z.enum(["ICL", "IPC", "casa_propia", "mixto", "escalonado", "fixed_percentage", "custom"]).nullable(),
   adjustment_frequency_months: z.number().int().positive().nullable(),
   adjustment_next_date: z.string().nullable(),
   adjustment_fixed_percentage: z.number().nullable(),
+  // Mixto: peso del ICL (0-100); el IPC es 100 - este valor.
+  adjustment_mix_weight_icl: z.number().min(0).max(100).nullable(),
+  // Escalonado: tramos pactados { date, amount }.
+  adjustment_escalones: z.array(z.object({ date: z.string(), amount: z.number() })),
 
   // Extras: conceptos adicionales (expensas, ABL, etc.) con monto opcional
   extras: extrasArraySchema,
@@ -59,6 +63,8 @@ export const contractDefaults: ContractFormValues = {
   adjustment_frequency_months: 3,
   adjustment_next_date: "",
   adjustment_fixed_percentage: null,
+  adjustment_mix_weight_icl: 50,
+  adjustment_escalones: [],
   extras: [],
   notes: "",
 };

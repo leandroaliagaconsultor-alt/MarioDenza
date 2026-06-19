@@ -147,15 +147,22 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
           {calc ? (
             <div className="rounded-lg border border-green-200 bg-green-50 p-5">
               <div className="flex items-center gap-2 text-sm font-medium text-green-700">
-                <Check className="h-4 w-4" /> Sugerido por {indexLabel(calc.indexType)} ({calc.monthsCovered} meses)
+                <Check className="h-4 w-4" /> Sugerido por {indexLabel(calc.indexType)}
+                {calc.monthsCovered > 0 && ` (${calc.monthsCovered} meses)`}
               </div>
 
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {calc.months.map((m) => (
-                  <span key={m.period} className="rounded-full bg-white px-2.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200">
-                    {formatPeriodShort(m.period)}: <span className="font-medium text-gray-900">+{((m.factor - 1) * 100).toFixed(1)}%</span>
-                  </span>
-                ))}
+                {calc.components && calc.components.length > 0
+                  ? calc.components.map((c) => (
+                      <span key={c.label} className="rounded-full bg-white px-2.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200">
+                        {c.label}: <span className="font-medium text-gray-900">+{c.percentage.toFixed(1)}%</span>
+                      </span>
+                    ))
+                  : calc.months.map((m) => (
+                      <span key={m.period} className="rounded-full bg-white px-2.5 py-0.5 text-xs text-gray-600 ring-1 ring-gray-200">
+                        {formatPeriodShort(m.period)}: <span className="font-medium text-gray-900">+{((m.factor - 1) * 100).toFixed(1)}%</span>
+                      </span>
+                    ))}
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-4 text-sm">

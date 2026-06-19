@@ -148,7 +148,24 @@ export async function createContract(values: ContractFormValues & { retroactive_
   }
 
   // Insert adjustment config if provided
-  if (parsed.adjustment_index_type && parsed.adjustment_frequency_months && parsed.adjustment_next_date) {
+  if (parsed.adjustment_index_type === "escalonado") {
+    // Escalonado: la frecuencia/fecha salen de los tramos, no de los inputs sueltos.
+    const escalones = (parsed.adjustment_escalones ?? [])
+      .filter((e) => e.date && e.amount > 0)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (escalones.length > 0) {
+      const { error: adjError } = await supabase
+        .from("contract_adjustments")
+        .insert({
+          contract_id: contract.id,
+          index_type: "escalonado",
+          frequency_months: 1, // placeholder: no se usa en escalonado
+          next_adjustment_date: escalones[0].date,
+          escalones,
+        });
+      if (adjError) throw adjError;
+    }
+  } else if (parsed.adjustment_index_type && parsed.adjustment_frequency_months && parsed.adjustment_next_date) {
     const { error: adjError } = await supabase
       .from("contract_adjustments")
       .insert({
@@ -158,6 +175,9 @@ export async function createContract(values: ContractFormValues & { retroactive_
         next_adjustment_date: parsed.adjustment_next_date,
         fixed_percentage: parsed.adjustment_index_type === "fixed_percentage"
           ? parsed.adjustment_fixed_percentage
+          : null,
+        mix_weight_icl: parsed.adjustment_index_type === "mixto"
+          ? (parsed.adjustment_mix_weight_icl ?? 50)
           : null,
       });
     if (adjError) throw adjError;
@@ -210,6 +230,12 @@ export async function updateContract(id: string, values: {
   late_fee_value: number | null;
   notes: string;
   extras?: { concept: string; amount: number }[];
+  adjustment_index_type?: string | null;
+  adjustment_frequency_months?: number | null;
+  adjustment_next_date?: string | null;
+  adjustment_fixed_percentage?: number | null;
+  adjustment_mix_weight_icl?: number | null;
+  adjustment_escalones?: { date: string; amount: number }[];
 }) {
   const supabase = await createClient();
   const { error } = await supabase
@@ -252,6 +278,36 @@ export async function updateContract(id: string, values: {
       .from("payments")
       .update({ amount_due, commission_amount, owner_payout })
       .eq("id", p.id);
+  }
+
+  // Config de aumentos: solo si el formulario la mandó. Reemplaza la existente.
+  if (values.adjustment_index_type !== undefined) {
+    await supabase.from("contract_adjustments").delete().eq("contract_id", id);
+    const t = values.adjustment_index_type;
+    if (t === "escalonado") {
+      const escalones = (values.adjustment_escalones ?? [])
+        .filter((e) => e.date && e.amount > 0)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      if (escalones.length > 0) {
+        await supabase.from("contract_adjustments").insert({
+          contract_id: id,
+          index_type: "escalonado",
+          frequency_months: 1, // placeholder: no se usa en escalonado
+          next_adjustment_date: escalones[0].date,
+          escalones,
+        });
+      }
+    } else if (t && values.adjustment_frequency_months && values.adjustment_next_date) {
+      await supabase.from("contract_adjustments").insert({
+        contract_id: id,
+        index_type: t,
+        frequency_months: values.adjustment_frequency_months,
+        next_adjustment_date: values.adjustment_next_date,
+        fixed_percentage: t === "fixed_percentage" ? (values.adjustment_fixed_percentage ?? null) : null,
+        mix_weight_icl: t === "mixto" ? (values.adjustment_mix_weight_icl ?? 50) : null,
+      });
+    }
+    // t vacío/null → queda sin configuración de aumentos.
   }
 
   revalidatePath(`/contratos/${id}`);

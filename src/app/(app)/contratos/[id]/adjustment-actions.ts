@@ -9,10 +9,14 @@ import {
   cyclePeriods,
   computeAdjustment,
   computeReferences,
+  combineWeighted,
+  escalonCalc,
+  nextEscalonAfter,
   isCoefficientIndex,
   REFERENCE_INDICES,
   type ManualAdjustmentCalc,
   type ReferenceCalc,
+  type Escalon,
 } from "@/lib/indices/manual-adjustment";
 
 export type AdjustmentCalcResult =
@@ -38,13 +42,57 @@ export async function calculatePendingAdjustment(contractId: string): Promise<Ad
 
     const { data: adj } = await supabase
       .from("contract_adjustments")
-      .select("index_type, frequency_months, next_adjustment_date")
+      .select("index_type, frequency_months, next_adjustment_date, mix_weight_icl, escalones")
       .eq("contract_id", contractId)
       .single();
     if (!adj) return { kind: "error", message: "Este contrato no tiene configuración de ajuste." };
 
     const previousRent = contract.current_rent as number;
     const indexType = adj.index_type as string;
+
+    // Escalonado: el monto del próximo tramo ya está pactado en el contrato.
+    if (indexType === "escalonado") {
+      const escalones = (adj.escalones as Escalon[] | null) ?? [];
+      const nextDate = adj.next_adjustment_date as string | null;
+      if (!nextDate || escalones.length === 0) {
+        return { kind: "error", message: "Este contrato escalonado no tiene tramos cargados." };
+      }
+      const calc = escalonCalc({ previousRent, escalones, targetDate: nextDate });
+      if (!calc) return { kind: "error", message: "No hay un tramo definido para esta fecha." };
+      return { kind: "ok", calc };
+    }
+
+    // Mixto: promedio ponderado de ICL e IPC sobre el mismo ciclo.
+    if (indexType === "mixto") {
+      const freq = adj.frequency_months as number | null;
+      const nextDate = adj.next_adjustment_date as string | null;
+      if (!freq || freq <= 0 || !nextDate) {
+        return { kind: "error", message: "El ajuste mixto no tiene frecuencia o próxima fecha configurada." };
+      }
+      const periods = cyclePeriods(nextDate, freq);
+      const { data: rows } = await supabase
+        .from("index_cache")
+        .select("index_type, period, value")
+        .in("index_type", ["ICL", "IPC"])
+        .in("period", periods.map((p) => `${p}-01`));
+
+      const byIndex = new Map<string, Map<string, number>>();
+      for (const r of rows ?? []) {
+        const it = r.index_type as string;
+        if (!byIndex.has(it)) byIndex.set(it, new Map());
+        byIndex.get(it)!.set((r.period as string).substring(0, 7), Number(r.value));
+      }
+      const iclRes = computeAdjustment({ indexType: "ICL", previousRent, periods, valuesByPeriod: byIndex.get("ICL") ?? new Map() });
+      const ipcRes = computeAdjustment({ indexType: "IPC", previousRent, periods, valuesByPeriod: byIndex.get("IPC") ?? new Map() });
+      if (!iclRes.calc || !ipcRes.calc) {
+        const missing = [...new Set([...iclRes.missingPeriods, ...ipcRes.missingPeriods])].sort();
+        return { kind: "needs_index", indexType: "mixto", periods, missing };
+      }
+      const weightIcl = adj.mix_weight_icl != null ? Number(adj.mix_weight_icl) : 50;
+      const calc = combineWeighted({ previousRent, icl: iclRes.calc, ipc: ipcRes.calc, weightIcl });
+      if (!calc) return { kind: "error", message: "No se pudo calcular el ajuste mixto." };
+      return { kind: "ok", calc };
+    }
 
     // "Otro / Manual": no hay un índice que componer. Mostramos ICL/IPC/Casa Propia como
     // referencia (cómo quedaría con cada uno) y el monto final lo decide la persona.
@@ -130,7 +178,7 @@ export async function applyAdjustment(
 
     const { data: adjConfig } = await supabase
       .from("contract_adjustments")
-      .select("id, frequency_months, next_adjustment_date")
+      .select("id, index_type, frequency_months, next_adjustment_date, escalones")
       .eq("contract_id", contractId)
       .single();
 
@@ -188,10 +236,19 @@ export async function applyAdjustment(
     }
 
     if (adjConfig) {
-      const nextDate = addMonths(new Date(adjConfig.next_adjustment_date as string), adjConfig.frequency_months as number);
+      let nextDateStr: string;
+      if ((adjConfig.index_type as string) === "escalonado") {
+        // Avanzar al siguiente tramo pactado. Si no quedan, sin más aumentos.
+        const escalones = (adjConfig.escalones as Escalon[] | null) ?? [];
+        const next = nextEscalonAfter(escalones, adjConfig.next_adjustment_date as string);
+        nextDateStr = next ? next.date : "2099-12-31";
+      } else {
+        const nextDate = addMonths(new Date(adjConfig.next_adjustment_date as string), adjConfig.frequency_months as number);
+        nextDateStr = format(nextDate, "yyyy-MM-dd");
+      }
       await supabase
         .from("contract_adjustments")
-        .update({ next_adjustment_date: format(nextDate, "yyyy-MM-dd") })
+        .update({ next_adjustment_date: nextDateStr })
         .eq("id", adjConfig.id);
     }
 

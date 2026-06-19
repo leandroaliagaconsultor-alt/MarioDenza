@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { updateContract } from "../../actions";
 import { LEGAL_FRAMEWORKS, LATE_FEE_TYPES } from "@/lib/types/enums";
 import { ExtrasFields } from "@/components/forms/extras-fields";
+import { AdjustmentFields } from "@/components/forms/contract-wizard/adjustment-fields";
 
 interface FormValues {
   start_date: string;
@@ -27,6 +28,12 @@ interface FormValues {
   late_fee_value: number | null;
   notes: string;
   extras: { concept: string; amount: number }[];
+  adjustment_index_type: string | null;
+  adjustment_frequency_months: number | null;
+  adjustment_next_date: string | null;
+  adjustment_fixed_percentage: number | null;
+  adjustment_mix_weight_icl: number | null;
+  adjustment_escalones: { date: string; amount: number }[];
 }
 
 interface Props {
@@ -139,6 +146,12 @@ export function ContractEditForm({ contractId, defaultValues }: Props) {
 
       <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
         <ExtrasFields control={control} register={register} />
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900">Configuración de aumentos</h2>
+        <Separator className="my-4" />
+        <AdjustmentFields register={register} watch={watch} control={control} />
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">

@@ -41,6 +41,8 @@ export interface ManualAdjustmentCalc {
   percentage: number; // (coefficient - 1) * 100
   previousRent: number;
   suggestedNewRent: number;
+  /** Desglose para mostrar (mixto: cada índice; escalonado: el tramo). Opcional. */
+  components?: { label: string; percentage: number }[];
 }
 
 /** Los `freq` meses calendario anteriores al mes del ajuste, en orden cronológico ("YYYY-MM"). */
@@ -114,6 +116,94 @@ export function computeReferences(params: {
     const { calc, missingPeriods } = computeAdjustment({ indexType, previousRent, periods, valuesByPeriod });
     return { indexType, calc, missing: missingPeriods };
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MIXTO — ponderación de dos índices (ej. 50% ICL + 50% IPC).
+// El coeficiente combinado es el promedio ponderado de los coeficientes de cada
+// índice sobre el mismo ciclo de meses. Requiere ambos cálculos completos.
+// ─────────────────────────────────────────────────────────────────────────────
+export function combineWeighted(params: {
+  previousRent: number;
+  icl: ManualAdjustmentCalc | null;
+  ipc: ManualAdjustmentCalc | null;
+  weightIcl: number; // 0-100
+}): ManualAdjustmentCalc | null {
+  const { previousRent, icl, ipc, weightIcl } = params;
+  if (!icl || !ipc) return null;
+  const wIcl = weightIcl / 100;
+  const wIpc = 1 - wIcl;
+  const coefficient = icl.coefficient * wIcl + ipc.coefficient * wIpc;
+  const suggestedNewRent = Math.round(previousRent * coefficient);
+  const percentage = Number(((coefficient - 1) * 100).toFixed(2));
+  return {
+    indexType: "mixto",
+    fromPeriod: icl.fromPeriod,
+    toPeriod: icl.toPeriod,
+    monthsCovered: icl.monthsCovered,
+    months: [],
+    coefficient: Number(coefficient.toFixed(6)),
+    percentage,
+    previousRent,
+    suggestedNewRent,
+    components: [
+      { label: `ICL ${weightIcl}%`, percentage: icl.percentage },
+      { label: `IPC ${100 - weightIcl}%`, percentage: ipc.percentage },
+    ],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ESCALONADO — tramos con montos ya pactados en el contrato.
+// Cada tramo: { date: "YYYY-MM-DD", amount: <alquiler desde esa fecha> }.
+// ─────────────────────────────────────────────────────────────────────────────
+export interface Escalon {
+  date: string; // "YYYY-MM-DD"
+  amount: number; // alquiler que rige desde esa fecha
+}
+
+/** Tramos ordenados cronológicamente, descartando los inválidos. */
+export function sortEscalones(escalones: Escalon[]): Escalon[] {
+  return escalones
+    .filter((e) => e && e.date && Number(e.amount) > 0)
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** El tramo que corresponde a `targetDate` (coincidencia exacta o el primero >= targetDate). */
+export function pickEscalon(escalones: Escalon[], targetDate: string): Escalon | null {
+  const sorted = sortEscalones(escalones);
+  return sorted.find((e) => e.date === targetDate) ?? sorted.find((e) => e.date >= targetDate) ?? null;
+}
+
+/** El siguiente tramo después de `currentDate` (para avanzar la próxima fecha de ajuste). */
+export function nextEscalonAfter(escalones: Escalon[], currentDate: string): Escalon | null {
+  return sortEscalones(escalones).find((e) => e.date > currentDate) ?? null;
+}
+
+export function escalonCalc(params: {
+  previousRent: number;
+  escalones: Escalon[];
+  targetDate: string;
+}): ManualAdjustmentCalc | null {
+  const { previousRent, escalones, targetDate } = params;
+  const esc = pickEscalon(escalones, targetDate);
+  if (!esc) return null;
+  const coefficient = previousRent > 0 ? esc.amount / previousRent : 1;
+  const percentage = Number(((coefficient - 1) * 100).toFixed(2));
+  const period = esc.date.substring(0, 7);
+  return {
+    indexType: "escalonado",
+    fromPeriod: period,
+    toPeriod: period,
+    monthsCovered: 0,
+    months: [],
+    coefficient: Number(coefficient.toFixed(6)),
+    percentage,
+    previousRent,
+    suggestedNewRent: esc.amount,
+    components: [{ label: `Tramo ${formatPeriodShort(period)}`, percentage }],
+  };
 }
 
 /** "2026-02" -> "feb 2026" (para mostrar). */
