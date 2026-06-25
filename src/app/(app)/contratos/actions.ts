@@ -257,14 +257,17 @@ export async function updateContract(id: string, values: {
     .eq("id", id);
   if (error) throw error;
 
-  // Reflejar el nuevo alquiler en los pagos pendientes/vencidos (mantienen sus extras).
+  // Reflejar el nuevo alquiler Y los extras del contrato en los pagos pendientes/vencidos.
+  // Los extras se re-siembran desde el contrato (antes se mantenían los del pago, por lo
+  // que una expensa cargada DESPUÉS de generar el recibo nunca aparecía).
+  const contractExtras = normalizeExtras(values.extras);
+  const extrasT = extrasTotal(contractExtras);
   const { data: pendings } = await supabase
     .from("payments")
-    .select("id, extras")
+    .select("id")
     .eq("contract_id", id)
     .in("status", ["pendiente", "vencido"]);
   for (const p of pendings ?? []) {
-    const extrasT = extrasTotal(p.extras as { concept?: string; amount?: number }[] | null);
     const amount_due = values.current_rent + extrasT;
     const { commission_amount, owner_payout } = calculateCommission({
       amount_paid: amount_due,
@@ -276,7 +279,7 @@ export async function updateContract(id: string, values: {
     });
     await supabase
       .from("payments")
-      .update({ amount_due, commission_amount, owner_payout })
+      .update({ amount_due, extras: contractExtras, commission_amount, owner_payout })
       .eq("id", p.id);
   }
 
