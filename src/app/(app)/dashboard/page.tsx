@@ -1,8 +1,10 @@
 import {
   Building2, FileText, TrendingUp, AlertTriangle, Calendar, CreditCard, MessageCircle, ExternalLink,
+  Wallet, Clock, FileWarning, HandCoins,
 } from "lucide-react";
 import Link from "next/link";
 import { getDashboardStats } from "./actions";
+import type { UpcomingAdjustment } from "../aumentos/actions";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,23 @@ export default async function DashboardPage() {
   const now = new Date();
   const monthName = now.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
 
+  // Aumentos a ajustar agrupados por mes (este mes y el que viene), para organizarse mejor.
+  const MONTHS_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  const adjustmentsByMonth = (() => {
+    const map = new Map<string, UpcomingAdjustment[]>();
+    for (const a of stats.pendingAdjustments as UpcomingAdjustment[]) {
+      const key = (a.nextDate ?? "").substring(0, 7);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(a);
+    }
+    return [...map.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([period, items]) => {
+        const [yy, mm] = period.split("-").map(Number);
+        return { period, label: `${MONTHS_ES[mm - 1] ?? period} ${yy}`, items };
+      });
+  })();
+
   return (
     <div className="space-y-6">
       <div>
@@ -54,6 +73,49 @@ export default async function DashboardPage() {
         <StatCard title="Pagos vencidos" value={String(stats.overduePayments.length)}
           subtitle={`Morosidad: ${formatCurrency(stats.totalOverdue)}`}
           icon={AlertTriangle} color="bg-amber-500" />
+        <StatCard title="A liquidar a dueños" value={formatCurrency(stats.aLiquidar)}
+          subtitle={`${monthName} — cobrado ${formatCurrency(stats.payoutCobrado)}`}
+          icon={HandCoins} color="bg-violet-600" />
+      </div>
+
+      {/* Cobranza del mes */}
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <Wallet className="h-5 w-5 text-emerald-600" /> Cobranza del mes
+          </h2>
+          <span className="text-sm text-gray-500 capitalize">{monthName}</span>
+        </div>
+        <Separator className="my-3" />
+        {stats.cobranzaEsperado === 0 ? (
+          <p className="py-4 text-center text-sm text-gray-400">Todavía no hay pagos generados para este mes</p>
+        ) : (
+          <>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full rounded-full bg-emerald-500"
+                style={{ width: `${Math.min(100, Math.round((stats.cobranzaCobrado / stats.cobranzaEsperado) * 100))}%` }}
+              />
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-xs font-medium uppercase text-gray-500">Cobrado</p>
+                <p className="mt-0.5 font-bold text-emerald-700">{formatCurrency(stats.cobranzaCobrado)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-gray-500">Falta cobrar</p>
+                <p className="mt-0.5 font-bold text-amber-600">{formatCurrency(stats.cobranzaPendiente)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-gray-500">Esperado total</p>
+                <p className="mt-0.5 font-bold text-gray-900">{formatCurrency(stats.cobranzaEsperado)}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              {Math.round((stats.cobranzaCobrado / stats.cobranzaEsperado) * 100)}% cobrado de lo esperado este mes
+            </p>
+          </>
+        )}
       </div>
 
       {/* Charts row */}
@@ -172,40 +234,115 @@ export default async function DashboardPage() {
           )}
         </div>
 
+        {/* Vencen esta semana */}
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <Clock className="h-5 w-5 text-gray-400" /> Vencen esta semana
+          </h2>
+          <Separator className="my-3" />
+          {stats.dueThisWeek.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-400">Sin pagos por vencer en los próximos 7 días</p>
+          ) : (
+            <div className="space-y-3">
+              {stats.dueThisWeek.slice(0, 5).map((p: any) => {
+                const contract = Array.isArray(p.contract) ? p.contract[0] : p.contract;
+                const prop = Array.isArray(contract?.property) ? contract.property[0] : contract?.property;
+                const ten = Array.isArray(contract?.tenant) ? contract.tenant[0] : contract?.tenant;
+                return (
+                  <Link key={p.id} href={`/pagos/${p.id}`} className="flex items-center justify-between rounded-lg border border-gray-100 p-3 transition hover:bg-gray-50">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{prop?.address}{prop?.unit ? ` - ${prop.unit}` : ""}</p>
+                      <p className="text-xs text-gray-500">{ten?.full_name ?? "—"} — Vto: {formatDate(p.due_date)}</p>
+                    </div>
+                    <p className="text-sm font-medium text-gray-900">{formatCurrency(p.amount_due)}</p>
+                  </Link>
+                );
+              })}
+              {stats.dueThisWeek.length > 5 && (
+                <p className="text-center text-xs text-gray-400">y {stats.dueThisWeek.length - 5} más…</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Contratos incompletos */}
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 shadow-sm">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <FileWarning className="h-5 w-5 text-rose-400" /> Contratos incompletos
+          </h2>
+          <p className="mt-1 text-xs text-gray-500">Activos sin comisión cargada — conviene completarlos.</p>
+          <Separator className="my-3" />
+          {stats.incompleteContracts.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-400">No hay contratos incompletos 🎉</p>
+          ) : (
+            <div className="space-y-3">
+              {stats.incompleteContracts.slice(0, 5).map((c: any) => {
+                const prop = Array.isArray(c.property) ? c.property[0] : c.property;
+                const ten = Array.isArray(c.tenant) ? c.tenant[0] : c.tenant;
+                return (
+                  <Link key={c.id} href={`/contratos/${c.id}/editar`} className="flex items-center justify-between rounded-lg border border-rose-100 bg-rose-50/30 p-3 transition hover:bg-rose-50/60">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{prop?.address}{prop?.unit ? ` - ${prop.unit}` : ""}</p>
+                      <p className="text-xs text-gray-500">{ten?.full_name ?? "—"}</p>
+                    </div>
+                    <span className="text-xs font-medium text-rose-600">Sin comisión</span>
+                  </Link>
+                );
+              })}
+              {stats.incompleteContracts.length > 5 && (
+                <p className="text-center text-xs text-gray-400">y {stats.incompleteContracts.length - 5} más…</p>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Pending adjustments */}
         <div className="rounded-xl border border-teal-200 bg-teal-50/30 p-6 shadow-sm lg:col-span-2">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
             <TrendingUp className="h-5 w-5 text-teal-600" /> Aumentos a ajustar
+            {stats.pendingAdjustments.length > 0 && (
+              <span className="rounded-full bg-teal-100 px-2 py-0.5 text-sm font-medium text-teal-700">{stats.pendingAdjustments.length}</span>
+            )}
           </h2>
           <Separator className="my-3" />
           {stats.pendingAdjustments.length === 0 ? (
             <p className="py-4 text-center text-sm text-gray-400">No hay aumentos pendientes de ajustar</p>
           ) : (
-            <div className="space-y-3">
-              {stats.pendingAdjustments.map((a) => {
-                const indexLabel = INDEX_TYPES[a.indexType as keyof typeof INDEX_TYPES] ?? a.indexType;
-                return (
-                  <div key={a.contractId} className="flex items-center justify-between rounded-lg border border-teal-100 bg-white p-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{a.propertyAddress}</p>
-                      <p className="text-xs text-gray-500">
-                        {a.tenantName ?? "—"} — {indexLabel} cada {a.frequencyMonths}m — Actual: {formatCurrency(a.currentRent, a.currency as CurrencyType)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-teal-700">{formatDate(a.nextDate)}</p>
-                        <p className="text-xs text-teal-600">Proximo aumento</p>
-                      </div>
-                      <Link href={`/contratos/${a.contractId}`}>
-                        <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
-                          Aplicar
-                        </Button>
-                      </Link>
-                    </div>
+            <div className="space-y-5">
+              {adjustmentsByMonth.map((group) => (
+                <div key={group.period}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <h3 className="text-sm font-semibold capitalize text-gray-700">{group.label}</h3>
+                    <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700">{group.items.length}</span>
                   </div>
-                );
-              })}
+                  <div className="space-y-3">
+                    {group.items.map((a) => {
+                      const indexLabel = INDEX_TYPES[a.indexType as keyof typeof INDEX_TYPES] ?? a.indexType;
+                      return (
+                        <div key={a.contractId} className="flex items-center justify-between rounded-lg border border-teal-100 bg-white p-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{a.propertyAddress}</p>
+                            <p className="text-xs text-gray-500">
+                              {a.tenantName ?? "—"} — {indexLabel} cada {a.frequencyMonths}m — Actual: {formatCurrency(a.currentRent, a.currency as CurrencyType)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-teal-700">{formatDate(a.nextDate)}</p>
+                              <p className="text-xs text-teal-600">Proximo aumento</p>
+                            </div>
+                            <Link href={`/contratos/${a.contractId}`}>
+                              <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
+                                Aplicar
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

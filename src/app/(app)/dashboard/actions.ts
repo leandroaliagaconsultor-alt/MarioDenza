@@ -72,6 +72,40 @@ export async function getDashboardStats() {
   const totalCommissions = (monthCommissions || []).reduce((sum, p) => sum + (p.commission_amount || 0), 0);
   const totalOverdue = (overduePayments || []).reduce((sum, p) => sum + (p.amount_due || 0), 0);
 
+  // --- Widgets de visualización ---
+  const periodStart = new Date().toISOString().substring(0, 7) + "-01";
+  const in7days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+  const [
+    { data: monthPayments },
+    { data: settledPayouts },
+    { data: dueThisWeek },
+    { data: incompleteContracts },
+  ] = await Promise.all([
+    // Pagos del mes en curso → cobranza + a liquidar
+    supabase.from("payments").select("status, amount_due, amount_paid, owner_payout").eq("period", periodStart),
+    // Liquidaciones ya registradas este mes
+    supabase.from("owner_payouts").select("total_amount").eq("period", periodStart),
+    // Pagos que vencen en los próximos 7 días (todavía sin cobrar)
+    supabase.from("payments")
+      .select("id, due_date, amount_due, contract:contracts(property:properties(address, unit), tenant:tenants(full_name, phone))")
+      .in("status", ["pendiente", "vencido"]).gte("due_date", today).lte("due_date", in7days).order("due_date"),
+    // Contratos activos sin comisión cargada (datos incompletos)
+    supabase.from("contracts")
+      .select("id, current_rent, currency, property:properties(address, unit), tenant:tenants(full_name)")
+      .eq("status", "activo").eq("commission_percentage", 0).order("start_date"),
+  ]);
+
+  let cobrado = 0, esperado = 0, payoutCobrado = 0;
+  for (const p of monthPayments || []) {
+    esperado += p.amount_due || 0;
+    cobrado += p.amount_paid || 0;
+    if (p.status === "pagado" || p.status === "parcial") payoutCobrado += p.owner_payout || 0;
+  }
+  const cobranzaPendiente = Math.max(0, esperado - cobrado);
+  const settled = (settledPayouts || []).reduce((s, x) => s + (x.total_amount || 0), 0);
+  const aLiquidar = Math.max(0, payoutCobrado - settled);
+
   return {
     totalProperties: totalProperties ?? 0,
     occupiedProperties: occupiedProperties ?? 0,
@@ -85,6 +119,14 @@ export async function getDashboardStats() {
     maintenanceProperties: maintenanceProperties ?? 0,
     commissionChartData,
     pendingAdjustments: pendingAdjustments || [],
+    // Widgets de visualización
+    cobranzaCobrado: cobrado,
+    cobranzaEsperado: esperado,
+    cobranzaPendiente,
+    aLiquidar,
+    payoutCobrado,
+    dueThisWeek: dueThisWeek || [],
+    incompleteContracts: incompleteContracts || [],
   };
 }
 
