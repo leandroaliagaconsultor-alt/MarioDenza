@@ -9,6 +9,7 @@ import { formatCurrency, formatDate, formatReceiptNumber } from "@/lib/utils/for
 import { extrasTotal, type PaymentExtra } from "@/lib/payments/extras";
 import { RegisterPaymentForm } from "./register-form";
 import { RevertPaymentButton } from "./revert-button";
+import { AdvancePaymentButton } from "../advance-payment-button";
 import Link from "next/link";
 import { Building2, UserCheck, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -205,6 +206,17 @@ export default async function PaymentDetailPage({ params }: Props) {
               <p className="whitespace-pre-wrap text-sm text-gray-600">{payment.notes}</p>
             </>
           )}
+        </div>
+      )}
+
+      {/* Pagó este mes y viene a pagar el siguiente también (adelantado) */}
+      {payment.status === "pagado" && contract?.id && (
+        <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50/40 p-4 shadow-sm sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-medium text-gray-900">¿El inquilino paga también el mes que viene?</p>
+            <p className="text-xs text-gray-500">Generá el pago del mes siguiente y registrá el cobro a continuación.</p>
+          </div>
+          <AdvancePaymentButton contractId={contract.id} />
         </div>
       )}
 

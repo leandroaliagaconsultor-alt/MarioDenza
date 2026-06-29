@@ -10,13 +10,21 @@ import { PAYMENT_STATUSES, PAYMENT_STATUS_COLORS } from "@/lib/types/enums";
 import type { PaymentStatus, CurrencyType } from "@/lib/types/enums";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
+const PAYMENT_TABS = [
+  { value: "", label: "Todos" },
+  { value: "pendiente", label: "Pendientes" },
+  { value: "vencido", label: "Vencidos" },
+  { value: "parcial", label: "Parciales" },
+  { value: "pagado", label: "Pagados" },
+];
+
 interface Props {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; status?: string }>;
 }
 
 export default async function PagosPage({ searchParams }: Props) {
-  const { q } = await searchParams;
-  const groups = await getPaymentsByProperty(q);
+  const { q, status } = await searchParams;
+  const groups = await getPaymentsByProperty(q, status);
 
   return (
     <div className="space-y-6">
@@ -30,11 +38,33 @@ export default async function PagosPage({ searchParams }: Props) {
         <SearchInput placeholder="Buscar por propiedad, inquilino o dueño..." />
       </div>
 
+      {/* Filtro por estado */}
+      <div className="flex flex-wrap gap-2">
+        {PAYMENT_TABS.map((t) => {
+          const active = (status ?? "") === t.value;
+          const params = new URLSearchParams();
+          if (t.value) params.set("status", t.value);
+          if (q) params.set("q", q);
+          const href = `/pagos${params.toString() ? `?${params.toString()}` : ""}`;
+          return (
+            <Link
+              key={t.value}
+              href={href}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                active ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
+      </div>
+
       {groups.length === 0 ? (
         <EmptyState
           icon={CreditCard}
-          title={q ? "Sin resultados" : "Sin pagos"}
-          description={q ? "No se encontraron pagos." : "Genera los pagos del mes con el boton de arriba."}
+          title={q || status ? "Sin resultados" : "Sin pagos"}
+          description={q || status ? "No se encontraron pagos con ese criterio." : "Genera los pagos del mes con el boton de arriba."}
         />
       ) : (
         <div className="space-y-3">

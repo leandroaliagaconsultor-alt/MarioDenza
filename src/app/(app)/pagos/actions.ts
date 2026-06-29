@@ -255,6 +255,78 @@ export async function generatePaymentsForMonth(year: number, month: number) {
   return result;
 }
 
+const MONTH_NAMES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/**
+ * Genera el pago del MES QUE VIENE para UN solo contrato (para cobrar adelantado).
+ * Idempotente: si ese pago ya existe, no crea nada.
+ */
+export async function generateNextMonthForContract(contractId: string): Promise<{ created: boolean; period: string; paymentId: string }> {
+  const supabase = await createClient();
+
+  const now = new Date();
+  let year = now.getFullYear();
+  let month = now.getMonth() + 2; // mes que viene (getMonth() es 0-based → +1 actual, +1 más)
+  if (month > 12) { month -= 12; year += 1; }
+  const period = `${year}-${String(month).padStart(2, "0")}-01`;
+  const label = `${MONTH_NAMES_ES[month - 1]} ${year}`;
+
+  const { data: contract, error: cErr } = await supabase
+    .from("contracts")
+    .select("id, status, current_rent, payment_day, commission_percentage, agency_collects, extras")
+    .eq("id", contractId)
+    .single();
+  if (cErr) throw cErr;
+  if (!contract) throw new Error("Contrato no encontrado");
+  if (contract.status !== "activo") throw new Error("El contrato no está activo");
+
+  // ¿Ya existe el pago de ese período para este contrato?
+  const { data: existing } = await supabase
+    .from("payments")
+    .select("id")
+    .eq("contract_id", contractId)
+    .eq("period", period)
+    .limit(1)
+    .maybeSingle();
+  if (existing) return { created: false, period: label, paymentId: existing.id as string };
+
+  const lastDay = new Date(year, month, 0).getDate();
+  const day = Math.min(contract.payment_day as number, lastDay);
+  const due_date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  const extras = normalizeExtras(contract.extras as { concept?: string; amount?: number }[] | null);
+  const extrasT = extrasTotal(extras);
+  const amount_due = (contract.current_rent as number) + extrasT;
+  const { commission_amount, owner_payout } = calculateCommission({
+    amount_paid: amount_due,
+    discount_amount: 0,
+    late_fee_amount: 0,
+    commission_percentage: (contract.commission_percentage as number) ?? 0,
+    agency_collects: (contract.agency_collects as boolean) ?? true,
+    extras_total: extrasT,
+  });
+
+  const { data: inserted, error: insErr } = await supabase.from("payments").insert({
+    contract_id: contractId,
+    period,
+    due_date,
+    amount_due,
+    amount_paid: 0,
+    discount_amount: 0,
+    late_fee_amount: 0,
+    commission_amount,
+    owner_payout,
+    extras,
+    status: "pendiente",
+  }).select("id").single();
+  if (insErr) throw insErr;
+
+  revalidatePath(`/contratos/${contractId}`);
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
+  return { created: true, period: label, paymentId: inserted.id as string };
+}
+
 export async function getAvailablePeriods() {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -291,9 +363,11 @@ export interface PropertyPaymentGroup {
 }
 
 /** Agrupa los pagos por propiedad, con inquilino principal, dueño, último pago y los últimos 5 pagos. */
-export async function getPaymentsByProperty(search?: string): Promise<PropertyPaymentGroup[]> {
+const PAYMENT_STATUS_VALUES = ["pendiente", "pagado", "parcial", "vencido"] as const;
+
+export async function getPaymentsByProperty(search?: string, status?: string): Promise<PropertyPaymentGroup[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("payments")
     .select(`
       id, period, paid_date, amount_due, status,
@@ -304,6 +378,11 @@ export async function getPaymentsByProperty(search?: string): Promise<PropertyPa
       )
     `)
     .order("period", { ascending: false });
+  // Filtro por estado (si es uno válido). "Todos" no filtra.
+  if (status && (PAYMENT_STATUS_VALUES as readonly string[]).includes(status)) {
+    query = query.eq("status", status);
+  }
+  const { data, error } = await query;
   if (error) throw error;
 
   const groups = new Map<string, PropertyPaymentGroup>();
