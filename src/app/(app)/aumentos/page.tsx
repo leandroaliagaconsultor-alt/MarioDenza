@@ -2,6 +2,7 @@ import Link from "next/link";
 import { TrendingUp, ChevronDown, CheckCircle2 } from "lucide-react";
 import { getUpcomingAdjustments, getRecentAdjustments } from "./actions";
 import { PageHeader } from "@/components/ui/page-header";
+import { SearchInput } from "@/components/ui/search-input";
 import { AdjustmentPanel } from "@/app/(app)/contratos/[id]/adjustment-panel";
 import { NotifyAdjustmentButton } from "./notify-adjustment-button";
 import { INDEX_TYPES } from "@/lib/types/enums";
@@ -15,11 +16,33 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   programado: { label: "Programado", cls: "bg-gray-100 text-gray-600" },
 };
 
-export default async function AumentosPage() {
-  const [pending, recent] = await Promise.all([
+interface Props {
+  searchParams: Promise<{ q?: string }>;
+}
+
+export default async function AumentosPage({ searchParams }: Props) {
+  const { q } = await searchParams;
+  const [pendingRaw, recentRaw] = await Promise.all([
     getUpcomingAdjustments(),
     getRecentAdjustments(),
   ]);
+
+  const s = (q ?? "").toLowerCase().trim();
+  const matches = (tenant: string | null, address: string, owner: string | null) =>
+    !s ||
+    (tenant ?? "").toLowerCase().includes(s) ||
+    address.toLowerCase().includes(s) ||
+    (owner ?? "").toLowerCase().includes(s);
+
+  // Orden alfabético por inquilino (antes salía por fecha/dirección).
+  const byTenant = (a: { tenantName: string | null }, b: { tenantName: string | null }) =>
+    (a.tenantName ?? "").localeCompare(b.tenantName ?? "", "es", { sensitivity: "base" });
+
+  const pending = pendingRaw
+    .filter((a) => matches(a.tenantName, a.propertyAddress, a.ownerName))
+    .sort(byTenant);
+  // "Últimos aumentos" queda en orden cronológico (historial); solo se filtra por la búsqueda.
+  const recent = recentRaw.filter((g) => matches(g.tenantName, g.propertyAddress, g.ownerName));
 
   return (
     <div className="space-y-8">
@@ -28,6 +51,8 @@ export default async function AumentosPage() {
         description="Pendientes de ajustar y el histórico de aumentos aplicados"
       />
 
+      <SearchInput placeholder="Buscar por inquilino, dirección o dueño..." />
+
       {/* Pendientes de ajustar */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Pendientes de ajustar</h2>
@@ -35,7 +60,7 @@ export default async function AumentosPage() {
         {pending.length === 0 ? (
           <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-sm">
             <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
-            <span className="font-medium text-green-800">No tenés ajustes pendientes.</span>
+            <span className="font-medium text-green-800">{s ? "No hay pendientes que coincidan con la búsqueda." : "No tenés ajustes pendientes."}</span>
           </div>
         ) : (
           pending.map((a) => {

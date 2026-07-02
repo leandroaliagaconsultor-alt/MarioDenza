@@ -18,6 +18,15 @@ export function toMonthlyFactor(value: number): number {
   return value > 10 ? value / INDEX_FACTOR_SCALE : value;
 }
 
+/** Paso de redondeo del alquiler sugerido (al mil), para facilitar el manejo de efectivo/cambio. */
+export const RENT_ROUND_STEP = 1000;
+
+/** Redondea el alquiler sugerido al múltiplo más cercano de `step` (por defecto, al mil). */
+export function roundRent(value: number, step: number = RENT_ROUND_STEP): number {
+  if (step <= 0) return Math.round(value);
+  return Math.round(value / step) * step;
+}
+
 const COEFFICIENT_INDICES = new Set(["ICL", "IPC", "casa_propia"]);
 
 /** Índices que se calculan por coeficiente cargado (vs. % fijo / personalizado, que van a mano). */
@@ -72,7 +81,7 @@ export function computeAdjustment(params: {
     return { period: p, value, factor: toMonthlyFactor(value) };
   });
   const coefficient = months.reduce((acc, mf) => acc * mf.factor, 1);
-  const suggestedNewRent = Math.round(previousRent * coefficient);
+  const suggestedNewRent = roundRent(previousRent * coefficient);
   const percentage = Number(((coefficient - 1) * 100).toFixed(2));
 
   return {
@@ -134,7 +143,7 @@ export function combineWeighted(params: {
   const wIcl = weightIcl / 100;
   const wIpc = 1 - wIcl;
   const coefficient = icl.coefficient * wIcl + ipc.coefficient * wIpc;
-  const suggestedNewRent = Math.round(previousRent * coefficient);
+  const suggestedNewRent = roundRent(previousRent * coefficient);
   const percentage = Number(((coefficient - 1) * 100).toFixed(2));
   return {
     indexType: "mixto",
