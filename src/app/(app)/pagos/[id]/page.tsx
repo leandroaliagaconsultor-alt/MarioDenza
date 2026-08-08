@@ -36,7 +36,8 @@ export default async function PaymentDetailPage({ params }: Props) {
   const isPartial = payment.status === "parcial";
   const isCollectible = isPending || isPartial;
   const hasPaid = (payment.amount_paid ?? 0) > 0;
-  const balance = payment.amount_due - (payment.amount_paid ?? 0);
+  // El descuento reduce lo que se debe: saldo = (total − descuento) − pagado.
+  const balance = payment.amount_due - (payment.discount_amount ?? 0) - (payment.amount_paid ?? 0);
 
   // Extras del pago + alquiler (= total esperado menos extras)
   const extras = (Array.isArray(payment.extras) ? payment.extras : []) as PaymentExtra[];
@@ -229,6 +230,7 @@ export default async function PaymentDetailPage({ params }: Props) {
           suggestedLateFee={suggestedLateFee}
           initialExtras={extras}
           alreadyPaid={payment.amount_paid}
+          initialDiscount={payment.discount_amount ?? 0}
         />
       )}
     </div>

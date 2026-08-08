@@ -61,7 +61,8 @@ export async function GET(
 
   const extras = (Array.isArray(payment.extras) ? payment.extras : []) as PaymentExtra[];
   const rent = payment.amount_due - extrasTotal(extras);
-  const balanceNum = payment.amount_due - (payment.amount_paid ?? 0);
+  // El descuento reduce lo que se debe: saldo = (total − descuento) − pagado.
+  const balanceNum = payment.amount_due - (payment.discount_amount ?? 0) - (payment.amount_paid ?? 0);
 
   const data = {
     logo,

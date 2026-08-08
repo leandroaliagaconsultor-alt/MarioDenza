@@ -26,14 +26,15 @@ interface Props {
   suggestedLateFee?: number;
   initialExtras?: PaymentExtra[];
   alreadyPaid?: number; // ya pagado a cuenta (pagos parciales previos)
+  initialDiscount?: number; // descuento ya cargado (para no perderlo al re-editar un parcial)
 }
 
-export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFee = 0, initialExtras = [], alreadyPaid = 0 }: Props) {
+export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFee = 0, initialExtras = [], alreadyPaid = 0, initialDiscount = 0 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
-  const initialTotal = rent + initialExtras.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const initialTotal = Math.max(0, rent + initialExtras.reduce((s, e) => s + (Number(e.amount) || 0), 0) - initialDiscount);
   const initialSaldo = Math.max(0, initialTotal - alreadyPaid);
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<RegisterPaymentValues>({
@@ -43,7 +44,7 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
       amount_paid: initialSaldo, // por defecto cobra el saldo (o el total si no hay nada pagado)
       paid_date: today,
       payment_method: "efectivo",
-      discount_amount: 0,
+      discount_amount: initialDiscount,
       discount_reason: "",
       late_fee_amount: suggestedLateFee,
       notes: "",
@@ -53,8 +54,11 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
 
   const watchedExtras = watch("extras");
   const watchedRent = watch("rent");
+  const watchedDiscount = Number(watch("discount_amount")) || 0;
   const extrasSum = (watchedExtras ?? []).reduce((s, e) => s + (Number(e?.amount) || 0), 0);
-  const total = (Number(watchedRent) || 0) + extrasSum;
+  const bruto = (Number(watchedRent) || 0) + extrasSum;
+  // El descuento se resta del total a cobrar (lo que efectivamente paga el inquilino).
+  const total = Math.max(0, bruto - watchedDiscount);
   const saldoAntes = Math.max(0, total - alreadyPaid);
 
   // El "paga ahora" sigue al saldo restante; igual queda editable (puede pagar menos = a cuenta).
@@ -113,6 +117,12 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
               </div>
             ) : null
           )}
+          {watchedDiscount > 0 && (
+            <div className="flex items-center justify-between text-rose-600">
+              <span>Descuento</span>
+              <span>− {formatCurrency(watchedDiscount, currency)}</span>
+            </div>
+          )}
           <Separator className="my-1.5" />
           <div className="flex items-center justify-between">
             <span className="font-semibold text-gray-700">Total a cobrar</span>
@@ -163,6 +173,7 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
           <div>
             <Label htmlFor="discount_amount">Descuento</Label>
             <Input id="discount_amount" type="number" step="0.01" min={0} {...register("discount_amount", { valueAsNumber: true })} className="mt-1" />
+            <p className="mt-1 text-xs text-gray-400">Se resta del total a cobrar.</p>
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="discount_reason">Motivo del descuento</Label>
