@@ -14,7 +14,7 @@ export async function generateMonthlyPayments(
   // Get all active contracts
   const { data: contracts, error: contractsErr } = await supabase
     .from("contracts")
-    .select("id, current_rent, payment_day, commission_percentage, agency_collects, extras")
+    .select("id, current_rent, payment_day, commission_percentage, agency_collects, extras, end_date")
     .eq("status", "activo");
 
   if (contractsErr) throw contractsErr;
@@ -31,6 +31,8 @@ export async function generateMonthlyPayments(
   const existingIds = new Set((existing || []).map((p) => p.contract_id));
 
   const toInsert = contracts
+    // No generar pagos de meses posteriores al fin del contrato (evita morosidad fantasma).
+    .filter((c) => !c.end_date || (c.end_date as string) >= period)
     .filter((c) => !existingIds.has(c.id))
     .map((c) => {
       // Calculate due date based on payment_day

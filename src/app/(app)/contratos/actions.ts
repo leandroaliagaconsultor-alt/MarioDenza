@@ -139,12 +139,13 @@ export async function createContract(values: ContractFormValues & { retroactive_
   const { error: tenantsError } = await supabase.from("contract_tenants").insert(tenantRows);
   if (tenantsError) throw tenantsError;
 
-  // If renewal, finalize the previous contract
+  // If renewal, finalize the previous contract and drop its uncollected payments.
   if (values.renew_from) {
     await supabase
       .from("contracts")
       .update({ status: "finalizado" })
       .eq("id", values.renew_from);
+    await purgeUnpaidPayments(supabase, values.renew_from);
   }
 
   // Insert adjustment config if provided
@@ -319,6 +320,25 @@ export async function updateContract(id: string, values: {
   revalidatePath("/dashboard");
 }
 
+/**
+ * Borra los pagos pendientes/vencidos SIN cobrar de un contrato (amount_paid = 0).
+ * Se usa al finalizar o renovar: esos pagos ya no se van a cobrar y no deben
+ * seguir figurando en la morosidad. Los pagos con algo cobrado (parcial/pagado) se
+ * conservan como registro histórico.
+ */
+async function purgeUnpaidPayments(supabase: Awaited<ReturnType<typeof createClient>>, contractId: string) {
+  const { data: pays } = await supabase
+    .from("payments")
+    .select("id")
+    .eq("contract_id", contractId)
+    .in("status", ["pendiente", "vencido"])
+    .eq("amount_paid", 0);
+  const ids = (pays ?? []).map((p) => p.id);
+  if (ids.length === 0) return;
+  await supabase.from("discounts").delete().in("payment_id", ids);
+  await supabase.from("payments").delete().in("id", ids);
+}
+
 export async function finalizeContract(id: string) {
   const supabase = await createClient();
 
@@ -334,6 +354,9 @@ export async function finalizeContract(id: string) {
     .eq("id", id);
   if (error) throw error;
 
+  // Sacar de la morosidad los pagos sin cobrar del contrato que se da de baja.
+  await purgeUnpaidPayments(supabase, id);
+
   // Free up the property
   if (contract) {
     await supabase
@@ -345,6 +368,8 @@ export async function finalizeContract(id: string) {
   revalidatePath("/contratos");
   revalidatePath(`/contratos/${id}`);
   revalidatePath("/propiedades");
+  revalidatePath("/pagos");
+  revalidatePath("/dashboard");
 }
 
 /**

@@ -273,12 +273,15 @@ export async function generateNextMonthForContract(contractId: string): Promise<
 
   const { data: contract, error: cErr } = await supabase
     .from("contracts")
-    .select("id, status, current_rent, payment_day, commission_percentage, agency_collects, extras")
+    .select("id, status, current_rent, payment_day, commission_percentage, agency_collects, extras, end_date")
     .eq("id", contractId)
     .single();
   if (cErr) throw cErr;
   if (!contract) throw new Error("Contrato no encontrado");
   if (contract.status !== "activo") throw new Error("El contrato no está activo");
+  if (contract.end_date && (contract.end_date as string) < period) {
+    throw new Error("El contrato termina antes de ese mes: no corresponde generar ese pago.");
+  }
 
   // ¿Ya existe el pago de ese período para este contrato?
   const { data: existing } = await supabase
@@ -372,7 +375,7 @@ export async function getPaymentsByProperty(search?: string, status?: string): P
     .select(`
       id, period, paid_date, amount_due, status,
       contract:contracts(
-        currency,
+        currency, status,
         tenant:tenants(full_name),
         property:properties(id, address, unit, owner:owners(id, full_name))
       )
@@ -388,8 +391,13 @@ export async function getPaymentsByProperty(search?: string, status?: string): P
   const groups = new Map<string, PropertyPaymentGroup>();
   for (const p of data) {
     const contract = (Array.isArray(p.contract) ? p.contract[0] : p.contract) as
-      | { currency: string; tenant: unknown; property: unknown }
+      | { currency: string; status: string; tenant: unknown; property: unknown }
       | null;
+    // Morosidad fantasma: no mostrar pendientes/vencidos de contratos no vigentes
+    // (finalizados/rescindidos). Los pagos ya cobrados quedan como historial.
+    if ((p.status === "pendiente" || p.status === "vencido") && contract && contract.status !== "activo") {
+      continue;
+    }
     const property = contract
       ? ((Array.isArray(contract.property) ? contract.property[0] : contract.property) as
           | { id: string; address: string; unit: string | null; owner: unknown }
