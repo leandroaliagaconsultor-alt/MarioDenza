@@ -3,7 +3,7 @@
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { contractFormSchema, contractDefaults, type ContractFormValues } from "@/lib/validators/contract";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
@@ -51,6 +51,8 @@ export function WizardShell({ properties: initialProperties, tenants: initialTen
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [ocrData, setOcrData] = useState<ExtractedContractData | null>(null);
+  // Candado contra doble click en "Crear contrato" (evita crear el mismo contrato dos veces).
+  const submittingRef = useRef(false);
   // Mutable lists — grow when user creates inline
   const [properties, setProperties] = useState(initialProperties);
   const [tenants, setTenants] = useState(initialTenants);
@@ -88,22 +90,27 @@ export function WizardShell({ properties: initialProperties, tenants: initialTen
   }
 
   async function onSubmit() {
+    if (submittingRef.current) return; // segundo click mientras se procesa el primero
+    submittingRef.current = true;
+    setLoading(true);
     const valid = await trigger();
     if (!valid) {
+      submittingRef.current = false;
+      setLoading(false);
       toast.error("Revisa los campos obligatorios en los pasos anteriores");
       return;
     }
     const values = methods.getValues();
-    setLoading(true);
     try {
       const contractId = await createContract({ ...values, renew_from: renewFrom });
       toast.success(renewFrom ? "Contrato renovado correctamente" : "Contrato creado correctamente");
+      // Candado sin liberar: se navega al contrato recién creado.
       router.push(`/contratos/${contractId}`);
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al crear contrato");
-    } finally {
+      submittingRef.current = false;
       setLoading(false);
+      toast.error(err instanceof Error ? err.message : "Error al crear contrato");
     }
   }
 

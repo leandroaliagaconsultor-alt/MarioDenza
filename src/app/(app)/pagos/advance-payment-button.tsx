@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, CalendarPlus } from "lucide-react";
 import { generateNextMonthForContract } from "./actions";
@@ -14,9 +14,12 @@ import { toast } from "sonner";
  */
 export function AdvancePaymentButton({ contractId }: { contractId: string }) {
   const [loading, setLoading] = useState(false);
+  const busy = useRef(false); // candado contra doble click
   const router = useRouter();
 
   async function handle() {
+    if (busy.current) return;
+    busy.current = true;
     setLoading(true);
     try {
       const r = await generateNextMonthForContract(contractId);
@@ -30,6 +33,7 @@ export function AdvancePaymentButton({ contractId }: { contractId: string }) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al generar el pago del mes que viene");
     } finally {
+      busy.current = false;
       setLoading(false);
     }
   }

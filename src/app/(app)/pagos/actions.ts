@@ -72,7 +72,14 @@ export async function getPaymentById(id: string) {
   return data;
 }
 
-export async function registerPayment(paymentId: string, values: RegisterPaymentValues) {
+const DOUBLE_SUBMIT_MSG =
+  "Este pago se acaba de registrar (posible doble click). Recargá la página para ver cómo quedó antes de volver a cobrar.";
+
+/**
+ * @param expectedAlreadyPaid lo que la pantalla veía como "ya pagado" al abrirse. Si en la base
+ *   hay otro valor, alguien (o un doble click) ya registró este pago: se rechaza para no sumar dos veces.
+ */
+export async function registerPayment(paymentId: string, values: RegisterPaymentValues, expectedAlreadyPaid?: number) {
   const parsed = registerPaymentSchema.parse(values);
   const supabase = await createClient();
 
@@ -83,6 +90,10 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
     .eq("id", paymentId)
     .single();
   if (payErr) throw payErr;
+
+  if (expectedAlreadyPaid != null && (Number(payment.amount_paid) || 0) !== (Number(expectedAlreadyPaid) || 0)) {
+    throw new Error(DOUBLE_SUBMIT_MSG);
+  }
 
   const contractData = payment.contract;
   const contract = (Array.isArray(contractData) ? contractData[0] : contractData) as { commission_percentage: number; agency_collects: boolean } | null;
@@ -109,7 +120,9 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
   const isPaid = newTotalPaid >= newAmountDue - parsed.discount_amount;
   const status = isPaid ? "pagado" : newTotalPaid > 0 ? "parcial" : "pendiente";
 
-  const { error } = await supabase
+  // Update CONDICIONAL: solo si lo ya pagado sigue siendo el que leímos. Si dos envíos llegan
+  // juntos (doble click), el segundo no encuentra la fila en ese estado y no suma de nuevo.
+  let updateQuery = supabase
     .from("payments")
     .update({
       amount_paid: newTotalPaid,
@@ -125,12 +138,18 @@ export async function registerPayment(paymentId: string, values: RegisterPayment
       notes: parsed.notes || null,
     })
     .eq("id", paymentId);
+  updateQuery = payment.amount_paid == null
+    ? updateQuery.is("amount_paid", null)
+    : updateQuery.eq("amount_paid", payment.amount_paid);
+  const { data: updated, error } = await updateQuery.select("id");
   if (error) throw error;
+  if (!updated || updated.length === 0) throw new Error(DOUBLE_SUBMIT_MSG);
 
   // Asignar número de recibo correlativo (inmutable, solo la primera vez)
   await supabase.rpc("assign_receipt_number", { p_payment_id: paymentId });
 
-  // Insert discount record if applicable
+  // Registro del descuento: refleja el estado actual (no se acumula en cada cobro parcial).
+  await supabase.from("discounts").delete().eq("payment_id", paymentId);
   if (parsed.discount_amount > 0) {
     await supabase.from("discounts").insert({
       payment_id: paymentId,

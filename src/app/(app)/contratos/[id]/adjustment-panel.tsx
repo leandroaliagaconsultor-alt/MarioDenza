@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
   const [result, setResult] = useState<AdjustmentCalcResult | null>(null);
   const [finalRent, setFinalRent] = useState<string>("");
   const [note, setNote] = useState("");
+  const applyingRef = useRef(false); // candado contra doble click en "Aplicar aumento"
   const router = useRouter();
 
   const indexLabel = (t: string) => INDEX_TYPES[t as keyof typeof INDEX_TYPES] ?? t;
@@ -53,9 +54,12 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
 
     const calc = result.kind === "ok" ? result.calc : null;
     const indexType = result.kind === "ok" ? result.calc.indexType : result.indexType;
+    if (applyingRef.current) return;
+    applyingRef.current = true;
     setApplying(true);
     try {
       const { error } = await applyAdjustment(contractId, {
+        expectedCurrentRent: currentRent,
         finalRent: amount,
         indexType,
         suggestedNewRent: calc?.suggestedNewRent ?? null,
@@ -75,6 +79,7 @@ export function AdjustmentPanel({ contractId, currency, currentRent }: Props) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al aplicar");
     } finally {
+      applyingRef.current = false; // el servidor igual rechaza un segundo aplicado del mismo aumento
       setApplying(false);
     }
   }

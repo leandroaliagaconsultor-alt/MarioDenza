@@ -151,7 +151,12 @@ export interface ApplyAdjustmentInput {
   toPeriod: string | null;
   monthsCovered: number | null;
   note?: string;
+  /** Alquiler que veía la pantalla. Si en la base ya es otro, el aumento ya se aplicó (doble click). */
+  expectedCurrentRent?: number;
 }
+
+const ALREADY_APPLIED_MSG =
+  "Este aumento ya se aplicó (posible doble click). Recargá la página para ver el alquiler actualizado.";
 
 /**
  * Aplica el aumento con el monto FINAL (manual). Guarda en el historial el sugerido vs.
@@ -176,6 +181,10 @@ export async function applyAdjustment(
       .single();
     if (!contract) return { error: "Contrato no encontrado" };
 
+    if (input.expectedCurrentRent != null && Number(contract.current_rent) !== Number(input.expectedCurrentRent)) {
+      return { error: ALREADY_APPLIED_MSG };
+    }
+
     const { data: adjConfig } = await supabase
       .from("contract_adjustments")
       .select("id, index_type, frequency_months, next_adjustment_date, escalones")
@@ -187,6 +196,39 @@ export async function applyAdjustment(
       ? Number(((input.finalRent / previousRent - 1) * 100).toFixed(2))
       : 0;
     const isOverride = input.suggestedNewRent != null && input.finalRent !== input.suggestedNewRent;
+
+    // CANDADO contra doble envío: primero se "toma" el aumento con un update condicional.
+    // Si dos envíos llegan juntos, solo uno encuentra la fila en el estado leído; el otro se
+    // rechaza antes de escribir historial o tocar el alquiler.
+    if (adjConfig) {
+      let nextDateStr: string;
+      if ((adjConfig.index_type as string) === "escalonado") {
+        // Avanzar al siguiente tramo pactado. Si no quedan, sin más aumentos.
+        const escalones = (adjConfig.escalones as Escalon[] | null) ?? [];
+        const next = nextEscalonAfter(escalones, adjConfig.next_adjustment_date as string);
+        nextDateStr = next ? next.date : "2099-12-31";
+      } else {
+        const nextDate = addMonths(new Date(adjConfig.next_adjustment_date as string), adjConfig.frequency_months as number);
+        nextDateStr = format(nextDate, "yyyy-MM-dd");
+      }
+      const { data: locked, error: lockErr } = await supabase
+        .from("contract_adjustments")
+        .update({ next_adjustment_date: nextDateStr })
+        .eq("id", adjConfig.id)
+        .eq("next_adjustment_date", adjConfig.next_adjustment_date)
+        .select("id");
+      if (lockErr) throw lockErr;
+      if (!locked || locked.length === 0) return { error: ALREADY_APPLIED_MSG };
+    } else {
+      const { data: locked, error: lockErr } = await supabase
+        .from("contracts")
+        .update({ current_rent: input.finalRent })
+        .eq("id", contractId)
+        .eq("current_rent", contract.current_rent)
+        .select("id");
+      if (lockErr) throw lockErr;
+      if (!locked || locked.length === 0) return { error: ALREADY_APPLIED_MSG };
+    }
 
     const { error: histErr } = await supabase.from("adjustment_history").insert({
       contract_id: contractId,
@@ -235,22 +277,7 @@ export async function applyAdjustment(
         .eq("id", p.id);
     }
 
-    if (adjConfig) {
-      let nextDateStr: string;
-      if ((adjConfig.index_type as string) === "escalonado") {
-        // Avanzar al siguiente tramo pactado. Si no quedan, sin más aumentos.
-        const escalones = (adjConfig.escalones as Escalon[] | null) ?? [];
-        const next = nextEscalonAfter(escalones, adjConfig.next_adjustment_date as string);
-        nextDateStr = next ? next.date : "2099-12-31";
-      } else {
-        const nextDate = addMonths(new Date(adjConfig.next_adjustment_date as string), adjConfig.frequency_months as number);
-        nextDateStr = format(nextDate, "yyyy-MM-dd");
-      }
-      await supabase
-        .from("contract_adjustments")
-        .update({ next_adjustment_date: nextDateStr })
-        .eq("id", adjConfig.id);
-    }
+    // (La próxima fecha de ajuste ya se avanzó arriba, como parte del candado.)
 
     revalidatePath(`/contratos/${contractId}`);
     revalidatePath("/contratos");

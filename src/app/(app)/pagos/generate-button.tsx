@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Plus } from "lucide-react";
 import { generatePaymentsForMonth } from "./actions";
@@ -9,9 +9,12 @@ import { toast } from "sonner";
 
 export function GeneratePaymentsButton() {
   const [loading, setLoading] = useState(false);
+  const busy = useRef(false); // candado contra doble click
   const router = useRouter();
 
   async function handleGenerate() {
+    if (busy.current) return;
+    busy.current = true;
     setLoading(true);
     try {
       const now = new Date();
@@ -25,6 +28,7 @@ export function GeneratePaymentsButton() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al generar pagos");
     } finally {
+      busy.current = false;
       setLoading(false);
     }
   }

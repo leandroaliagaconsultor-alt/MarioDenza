@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Check, Loader2 } from "lucide-react";
@@ -10,8 +10,11 @@ import { toast } from "sonner";
 export function QuickCollectButton({ paymentId }: { paymentId: string }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const busy = useRef(false); // candado contra doble click
 
   async function handle() {
+    if (busy.current) return;
+    busy.current = true;
     setSaving(true);
     try {
       await quickCollectPayment(paymentId);
@@ -20,6 +23,7 @@ export function QuickCollectButton({ paymentId }: { paymentId: string }) {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al registrar el pago");
     } finally {
+      busy.current = false;
       setSaving(false);
     }
   }

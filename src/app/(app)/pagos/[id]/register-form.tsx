@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PAYMENT_METHODS } from "@/lib/types/enums";
 import { formatCurrency } from "@/lib/utils/format";
@@ -32,12 +32,15 @@ interface Props {
 export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFee = 0, initialExtras = [], alreadyPaid = 0, initialDiscount = 0 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  // Candado contra doble click: el botón tarda un instante en deshabilitarse y en ese
+  // instante un segundo click podía registrar (y sumar) el pago otra vez.
+  const submittingRef = useRef(false);
 
   const today = new Date().toISOString().split("T")[0];
   const initialTotal = Math.max(0, rent + initialExtras.reduce((s, e) => s + (Number(e.amount) || 0), 0) - initialDiscount);
   const initialSaldo = Math.max(0, initialTotal - alreadyPaid);
 
-  const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<RegisterPaymentValues>({
+  const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm<RegisterPaymentValues>({
     resolver: zodResolver(registerPaymentSchema),
     defaultValues: {
       rent,
@@ -70,15 +73,18 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
   const saldoDespues = total - alreadyPaid - pagaAhora;
 
   async function onSubmit(values: RegisterPaymentValues) {
+    if (submittingRef.current) return; // segundo click mientras se procesa el primero
+    submittingRef.current = true;
     setLoading(true);
     try {
-      await registerPayment(paymentId, values);
+      await registerPayment(paymentId, values, alreadyPaid);
       toast.success(saldoDespues > 0 ? "Pago a cuenta registrado" : "Pago registrado correctamente");
+      // No se libera el candado: la página se recarga con el pago ya registrado.
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al registrar pago");
-    } finally {
+      submittingRef.current = false; // si falló, se puede reintentar
       setLoading(false);
+      toast.error(err instanceof Error ? err.message : "Error al registrar pago");
     }
   }
 
@@ -191,7 +197,7 @@ export function RegisterPaymentForm({ paymentId, rent, currency, suggestedLateFe
         </div>
 
         <div className="mt-6 flex justify-end">
-          <Button type="submit" disabled={loading} className="bg-teal-600 hover:bg-teal-700">
+          <Button type="submit" disabled={loading || isSubmitting} className="bg-teal-600 hover:bg-teal-700">
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {saldoDespues > 0 ? "Registrar pago a cuenta" : "Registrar pago"}
           </Button>
