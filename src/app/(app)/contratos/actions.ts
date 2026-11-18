@@ -30,6 +30,10 @@ export async function getContracts(search?: string, status?: string) {
     query = query.in("status", ["activo", "por_vencer"]).lt("end_date", today);
   } else if (status) {
     query = query.eq("status", status);
+  } else {
+    // Por defecto ("Vigentes"): no mezclar contratos finalizados/rescindidos con los
+    // actuales. Se consultan en sus propias pestañas.
+    query = query.not("status", "in", "(finalizado,rescindido)");
   }
 
   const { data, error } = await query;

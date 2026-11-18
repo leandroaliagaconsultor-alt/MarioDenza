@@ -393,9 +393,9 @@ export async function getPaymentsByProperty(search?: string, status?: string): P
     const contract = (Array.isArray(p.contract) ? p.contract[0] : p.contract) as
       | { currency: string; status: string; tenant: unknown; property: unknown }
       | null;
-    // Morosidad fantasma: no mostrar pendientes/vencidos de contratos no vigentes
-    // (finalizados/rescindidos). Los pagos ya cobrados quedan como historial.
-    if ((p.status === "pendiente" || p.status === "vencido") && contract && contract.status !== "activo") {
+    // Pagos muestra solo contratos vigentes: los de contratos finalizados/rescindidos no se
+    // mezclan con los actuales (su historial queda en la ficha del contrato y la propiedad).
+    if (!contract || contract.status !== "activo") {
       continue;
     }
     const property = contract

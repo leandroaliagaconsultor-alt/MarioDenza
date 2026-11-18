@@ -100,6 +100,13 @@ export function StepUploadPdf({ properties, tenants, onExtracted, onSkip, renewi
 
   return (
     <div className="space-y-5">
+      {!renewing && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <span className="font-semibold">¿Es una renovación?</span> No la cargues acá: entrá al contrato actual y tocá{" "}
+          <span className="font-semibold">"Renovar"</span>. Así se usa el mismo inquilino y la misma propiedad, y el
+          contrato viejo se cierra solo (no queda duplicado).
+        </div>
+      )}
       <div className="text-center">
         <FileUp className="mx-auto h-12 w-12 text-gray-300" />
         <h3 className="mt-3 text-sm font-semibold text-gray-900">

@@ -63,7 +63,7 @@ export function ContractActions({ contractId, propertyId, tenantId, currentRent,
         open={showFinalize}
         onOpenChange={setShowFinalize}
         title="Finalizar contrato"
-        description="Al finalizar, la propiedad quedara como disponible y no se generaran mas pagos. ¿Estas seguro que deseas finalizar este contrato?"
+        description="Al finalizar, la propiedad queda disponible y no se generan más pagos. OJO: si el inquilino RENUEVA, no finalices: usá el botón 'Renovar' (así no se duplican el inquilino ni la propiedad). ¿Finalizar igual?"
         confirmText="Finalizar contrato"
         variant="destructive"
         onConfirm={async () => {

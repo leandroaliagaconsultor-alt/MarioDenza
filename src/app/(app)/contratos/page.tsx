@@ -14,12 +14,13 @@ interface Props {
   searchParams: Promise<{ q?: string; status?: string }>;
 }
 
+// La pestaña por defecto ("Vigentes", sin ?status) ya muestra todos los contratos en curso,
+// así que no hace falta una pestaña "Activo" aparte. Finalizados/rescindidos van separados.
 const CONTRACT_TABS = [
-  { key: "activo", label: "Activo" },
   { key: "por_vencer", label: "Por vencer" },
   { key: "vencido", label: "Vencido" },
-  { key: "finalizado", label: "Finalizado" },
-  { key: "rescindido", label: "Rescindido" },
+  { key: "finalizado", label: "Finalizados" },
+  { key: "rescindido", label: "Rescindidos" },
 ];
 
 // "Por vencer" y "vencido" se derivan de end_date (no del status guardado, que queda
@@ -56,11 +57,11 @@ export default async function ContratosPage({ searchParams }: Props) {
       <div className="flex flex-wrap items-center gap-4">
         <SearchInput placeholder="Buscar por propiedad o inquilino..." />
         <div className="flex gap-2">
-          <Link href="/contratos">
-            <Button variant={!status ? "default" : "outline"} size="sm" className={!status ? "bg-teal-600" : ""}>Todos</Button>
+          <Link href={`/contratos${q ? `?q=${encodeURIComponent(q)}` : ""}`}>
+            <Button variant={!status ? "default" : "outline"} size="sm" className={!status ? "bg-teal-600" : ""}>Vigentes</Button>
           </Link>
           {CONTRACT_TABS.map(({ key, label }) => (
-            <Link key={key} href={`/contratos?status=${key}${q ? `&q=${q}` : ""}`}>
+            <Link key={key} href={`/contratos?status=${key}${q ? `&q=${encodeURIComponent(q)}` : ""}`}>
               <Button variant={status === key ? "default" : "outline"} size="sm" className={status === key ? "bg-teal-600" : ""}>{label}</Button>
             </Link>
           ))}
@@ -68,7 +69,17 @@ export default async function ContratosPage({ searchParams }: Props) {
       </div>
 
       {contracts.length === 0 ? (
-        <EmptyState icon={FileText} title={q || status ? "Sin resultados" : "Sin contratos"} description={q || status ? "No se encontraron contratos." : "Crea tu primer contrato."} />
+        <EmptyState
+          icon={FileText}
+          title={q || status ? "Sin resultados" : "Sin contratos vigentes"}
+          description={
+            q && !status
+              ? "No hay contratos vigentes con esa búsqueda. Si ya terminó, buscalo en la pestaña Finalizados."
+              : q || status
+                ? "No se encontraron contratos."
+                : "Crea tu primer contrato."
+          }
+        />
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white/80 shadow-sm">
           <div className="overflow-x-auto">
